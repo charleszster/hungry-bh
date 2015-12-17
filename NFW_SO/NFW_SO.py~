@@ -159,7 +159,7 @@ def run():
     plt.loglog(t_s, rho_c_array)
     plt.xlabel('Log time (Myr)')
     plt.ylabel('Log rho_c of OS profile (Msun/pc**3)')
-    plt.savefig('rho_c.png')
+    plt.savefig(''.join([plots_folder, 'rho_c.png']))
     plt.close()
     '''
     R_H_index = 0
@@ -172,7 +172,7 @@ def run():
     plt.xlabel('Log R')
     plt.ylabel('Log rho/rho_c')
     plt.title('rho/rho_c as function of R for r_h=%.f' % (R_H_array[R_H_index]))
-    plt.savefig('rho_rhoc_as_func_of_r.png')
+    plt.savefig(''.join([plots_folder, 'rho_rhoc_as_func_of_r.png']))
     '''
     m200_index = R_H_index
     rho_c_index = R_H_index
@@ -218,7 +218,7 @@ def run():
 #    plt.title('sigma as function of R for r_h=%.f' % (R_H_array[R_H_index]))
     fig.suptitle(''.join(['sigma as f\'n of r for r_h=%.1f, m200=%.f' % (R_H, m200)]), fontsize=12, y=1.)
     fig.tight_layout()
-    fig.savefig('sigma_as_func_of_r.png')
+    fig.savefig(''.join([plots_folder, 'sigma_as_func_of_r.png']))
     
     
 if __name__ == '__main__':

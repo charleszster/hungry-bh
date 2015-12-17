@@ -4,7 +4,7 @@
       REAL*8 mg1, mg2, mg3, mg4, mg5, mg6, mg7, mg8
       REAL*8 galaxy_mass, z_conv, cbhm
       REAL*8 r200, concentration, rho_crit
-      REAL*8 SO_rh, rho_c
+      REAL*8 SO_rh, rho_c, SO_rho, SO_r_tdot
 
       PARAMETER(nmax=100000)
       PARAMETER(t0=1.5653765d+03) !Charles Z. added t0 (Myr)

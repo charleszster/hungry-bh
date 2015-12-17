@@ -11,18 +11,7 @@ C
 C***********************************************************************
 C
 C
-C      REAL time
       CALL get_data
-C      OPEN(UNIT=9,FILE='time.txt',STATUS='OLD')
-C      OPEN(UNIT=10, FILE='r200.txt', STATUS='OLD')
-C      DO 150 i=1,37
-C         READ(9, *) time
-C         time = time*1000
-C         WRITE(10,*) time, z_conv(time), galaxy_mass(time), r200(time)
-C 150  CONTINUE
-C      CLOSE(9)
-C      CLOSE(10)
-C          --------
       CALL integrate
 C          -----
       END
@@ -61,9 +50,9 @@ C     Read in test particle positions and velocities
       DO 10 i=1,nbods
          READ(8,*) x(i),y(i),z(i),vx(i),vy(i),vz(i)
          mass(i) = cbhm(t0)	!Initial mass of central black hole i
-        vx(i) = vx(i)/SCALEFACTOR
-        vy(i) = vy(i)/SCALEFACTOR
-        vz(i) = vz(i)/SCALEFACTOR
+         vx(i) = vx(i)/SCALEFACTOR
+         vy(i) = vy(i)/SCALEFACTOR
+         vz(i) = vz(i)/SCALEFACTOR
  10   CONTINUE
       CLOSE(8)
 C
@@ -252,7 +241,10 @@ C       Compute acceleration due to Hernquist spheroid
 C
 
         IF (NSCTYPE.EQ.2) THEN
-            r = sqrt(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
+            DO 40 i=1,nbods
+                r = sqrt(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
+                
+40          CONTINUE
 
         ELSE IF (NSCTYPE.EQ.1) THEN
             DO 10 i=1,nbods
@@ -570,9 +562,14 @@ C         unit vector perpendicular to direction of motion
 
         SUBROUTINE NSCMASS(GMASS, R)
         INCLUDE 'hermite.h'
-        REAL*8 GMASS, R, Rt
+        REAL*8 GMASS, R, Rt, rh_local
 
-        IF (NSCTYPE.EQ.1) THEN
+        IF (NSCTYPE.EQ.2) THEN
+        rh_local = SO_rh()
+            GMASS = 4*PI*rc**2.*rh_local**2.*rho_c()*
+     &              (rh_local*atan(R/rh_local)-rc*atan(R/rc))/
+     &              (rh_local**2.-rc**2.)
+        ELSE IF (NSCTYPE.EQ.1) THEN
             GMASS = Ms*R*R*(R+rs)**(-2)
         ELSE
             Rt = R/rs
@@ -593,7 +590,9 @@ C         unit vector perpendicular to direction of motion
         REAL*8 RHO, R, RMIN, Rt
         RMIN = 1.e-10
 
-        IF (NSCTYPE.EQ.1) THEN
+        IF (NSCTYPE.EQ.2) THEN
+            RHO = rho_c()/((1+R**2./rc**2.)*(1+R**2./SO_rh()**2.))
+        ELSE IF (NSCTYPE.EQ.1) THEN
             IF (R.GT.RMIN) THEN
                 RHO = Ms/(2.0*PI)*rs/R*(R+rs)**(-3)
             ELSE

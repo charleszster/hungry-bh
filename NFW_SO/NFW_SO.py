@@ -9,7 +9,7 @@ import pickle
 import os
 import scipy.optimize
 import sys
-sys.path.append('/Users/chaz/Dropbox/Columbia/Ostriker/Cannibalism/mergertree/scripts')
+sys.path.append('/Users/chaz/Dropbox/Columbia/Ostriker/Cannibalism_code/mergertree/scripts')
 import sympy as sp
 from sympy.solvers import solve
 from sympy import Symbol
