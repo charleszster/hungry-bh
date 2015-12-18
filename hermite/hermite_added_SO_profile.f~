@@ -30,21 +30,21 @@ C***********************************************************************
       REAL*8 SCALEFACTOR
 
 C     Type of potential
-      NSCTYPE = 1                 !1= Hernquist, 0= Plummer, 2= Stone & Ostriker
+      NSCTYPE = 2                 !1= Hernquist, 0= Plummer, 2= Stone & Ostriker
 
 *     Read Input from STDIN
       READ(5,*)nbods            !number of particles; here always 1
       READ(5,*)nsteps,nout      !number of integration steps, and output interval
       READ(5,*)dt               !time step length [Myr]
-      Ms = galaxy_mass(t0)      !initial galaxy mass (t0 defined in hermite.h)
-      rs = r200(t0)             !initial galaxy scale radius
       IF (NSCTYPE.EQ.2) THEN
-        rc = 100.0				!totally arbitrary initial core radius for Stone & Ostriker profile
+        rc = 100.0		!totally arbitrary initial core radius for Stone & Ostriker profile
+        Ms = galaxy_mass(t0)    !initial galaxy mass (t0 defined in hermite.h)
+        rs = r200(t0)           !initial galaxy scale radius
       ELSE
         rc = 1.0                !totally arbitrary initial core radius for Hernquist and Plummer profiles
+        READ(5,*)Ms,rs
       ENDIF
       SCALEFACTOR = sqrt(1.0)
-
 C     Read in test particle positions and velocities
       OPEN(UNIT=8,FILE='model.txt',STATUS='OLD')
       DO 10 i=1,nbods
@@ -72,7 +72,7 @@ C
       INCLUDE 'hermite.h'
 
       INTEGER i, j !j = particle, i= timestep
-      REAL*8 dt1,dt2,dt3,DTSQ,DTSQ12C,DF,SUM,AT3,BT2
+      REAL*8 dt1,dt2,dt3,DTSQ,DTSQ12C,DF,SUM,AT3,BT2,r
 
       t=t0      !set timer to initial time t0
 
@@ -89,6 +89,7 @@ C    x(0),v(0),a(0),adot(0)
 C          -------
       DO 30 i=1,nsteps
 C
+C OUTPUT THE FOLLOWING VALUES TO SCREEN
         IF(MOD(i,1000).EQ.0) THEN
             WRITE(6,*)t,rs,Ms,mass(1)
         ENDIF
@@ -149,15 +150,15 @@ C Now we Taylor expand to the 5th order (corrector)
           BT2 = -3.0*DF - (SUM + adotz_old(j))*dt
           z(j)=z(j)+(0.6*AT3 + BT2)*DTSQ12C
           vz(j)=vz(j)+(0.75*AT3+BT2)*dt3
-
           CALL accel
  20     CONTINUE
 
 C     Advance time
 
-         CALL DIFFUSION(dt)
-C        CALL TIDALMASSGAIN(dt)
-
+        IF (NSCTYPE.NE.2) THEN  !NOT USED FOR THE SO PROFILE
+            CALL DIFFUSION(dt)
+            CALL TIDALMASSGAIN(dt)
+        ENDIF
         t = t + dt
 C********CHARLES ADDED THIS SECTION SINCE Ms, rs, and mass(i) ARE NOW FUNCTIONS OF TIME********
 C***************************************************************************************
@@ -243,8 +244,17 @@ C
         IF (NSCTYPE.EQ.2) THEN
             DO 40 i=1,nbods
                 r = sqrt(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
-                
-            CONTINUE
+                WRITE(*,*)Ms, SO_rh(), r, rc, rho_c(), Yrhrc(r),
+     &           Yr1r1(r, rc), Yr1r1(r, SO_rh()), Yrcrh(r)
+                WRITE(*,*)
+
+                ax(i) = SO_r_ddot(r)*x(i)/r
+                ay(i) = SO_r_ddot(r)*y(i)/r
+                az(i) = SO_r_ddot(r)*z(i)/r
+                adotx(i) = SO_r_tdot(r,i)*x(i)/r
+                adoty(i) = SO_r_tdot(r,i)*y(i)/r
+                adotz(i) = SO_r_tdot(r,i)*z(i)/r
+40          CONTINUE
 
         ELSE IF (NSCTYPE.EQ.1) THEN
             DO 10 i=1,nbods
@@ -323,7 +333,9 @@ C***********************************************************************
          firstc=.FALSE.
 C
          DO 5 i=1,nbods
-            IF (NSCTYPE.EQ.1) THEN
+            IF (NSCTYPE.EQ.2) THEN
+                sstring(1:4)='jerr'
+            ELSE IF (NSCTYPE.EQ.1) THEN
                 sstring(1:4)='hern'
             ELSE
                 sstring(1:4)='plum'
@@ -614,9 +626,17 @@ C         unit vector perpendicular to direction of motion
 
         SUBROUTINE NSCSIGMA(SIG, R)
         INCLUDE 'hermite.h'
-        REAL*8 SIG, R, Rt
+        REAL*8 SIG, R, Rt, rh_local
 
-        IF (NSCTYPE.EQ.1) THEN
+        IF (NSCTYPE.EQ.2) THEN
+            rh_local = SO_rh()
+            r_lim = sqrt(rc*rh_local)
+            IF (R.LE.r_lim) THEN
+                SIG = sigma_near(R)
+            ELSE
+                SIG = sigma_far(R)
+            END IF
+        ELSE IF (NSCTYPE.EQ.1) THEN
             Rt = R/rs
             SIG = G*Ms/(12.0*rs)*(12.0*R/(rs**4)*(R+rs)**3
      &          *LOG((R+rs)/R)-R/(R+rs)*(25.0+52.0*Rt
