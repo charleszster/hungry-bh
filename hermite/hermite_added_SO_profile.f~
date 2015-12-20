@@ -27,7 +27,7 @@ C***********************************************************************
       INCLUDE 'hermite.h'
 
       INTEGER i
-      REAL*8 SCALEFACTOR
+      REAL*8 SCALEFACTOR, GMASS
 
 C     Type of potential
       NSCTYPE = 2                 !1= Hernquist, 0= Plummer, 2= Stone & Ostriker
@@ -37,7 +37,7 @@ C     Type of potential
       READ(5,*)nsteps,nout      !number of integration steps, and output interval
       READ(5,*)dt               !time step length [Myr]
       IF (NSCTYPE.EQ.2) THEN
-        rc = 100.0		!totally arbitrary initial core radius for Stone & Ostriker profile
+        rc = 100.0	!totally arbitrary initial core radius for Stone & Ostriker profile
         Ms = galaxy_mass(t0)    !initial galaxy mass (t0 defined in hermite.h)
         rs = r200(t0)           !initial galaxy scale radius
       ELSE
@@ -51,7 +51,8 @@ C     Read in test particle positions and velocities
          READ(8,*) x(i),y(i),z(i),vx(i),vy(i),vz(i)
          mass(i) = cbhm(t0)	!Initial mass of central black hole i
          vx(i) = vx(i)/SCALEFACTOR
-         vy(i) = vy(i)/SCALEFACTOR
+         CALL NSCMASS(GMASS, R)
+         vy(i) = sqrt(G*GMASS/x(i))  !vy(i)/SCALEFACTOR; TEMPORARILY SET VY(I) FOR CIRCULAR ORBIT TO TEST SO PROFILE
          vz(i) = vz(i)/SCALEFACTOR
  10   CONTINUE
       CLOSE(8)
@@ -162,9 +163,9 @@ C     Advance time
         t = t + dt
 C********CHARLES ADDED THIS SECTION SINCE Ms, rs, and mass(i) ARE NOW FUNCTIONS OF TIME********
 C***************************************************************************************
-        Ms = galaxy_mass(t)
-        rs = r200(t)
-        mass(1) = cbhm(t)
+C        Ms = galaxy_mass(t)
+C        rs = r200(t)
+C        mass(1) = cbhm(t)
 C***************************************************************************************
 C***************************************************************************************
         IF(MOD(i,nout).EQ.0)THEN
@@ -244,9 +245,6 @@ C
         IF (NSCTYPE.EQ.2) THEN
             DO 40 i=1,nbods
                 r = sqrt(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
-                WRITE(*,*)Ms, SO_rh(), r, rc, rho_c(), Yrhrc(r),
-     &           Yr1r1(r, rc), Yr1r1(r, SO_rh()), Yrcrh(r)
-                WRITE(*,*)
 
                 ax(i) = SO_r_ddot(r)*x(i)/r
                 ay(i) = SO_r_ddot(r)*y(i)/r
