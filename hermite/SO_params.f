@@ -1,6 +1,23 @@
 C***********************************************************************
 C
 C
+      FUNCTION pe_func(rh_local, rc_local)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 rh_local, rc_local
+
+      pe_func = -G*Ms**2./(PI*(rh_local-rc_local)**2.)*
+     &                    (rc_local*log(4.) + rh_local*log(4.) -
+     &                    2*rc_local*log(1.+rh_local/rc_local) -
+     &                    2*rh_local*log(1.+rc_local/rh_local))
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
       FUNCTION SO_rh()
 C
 C
@@ -197,3 +214,54 @@ C***********************************************************************
       RETURN
       END
 
+C***********************************************************************
+C
+C
+      SUBROUTINE funcd(rc_test, fn, df)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 rh_local, rc_test, fn, df
+
+      rh_local = SO_rh()
+      fn = pe - pe_func(rh_local, rc_test)
+      df = -(-G*Ms**2./(PI*(rh_local-rc_test)**2.)*(LOG(4.) - 
+     &       2*LOG(1.+rh_local/rc_test) + 2*rh_local/(rc_test+rh_local)-
+     &       2/(1.+rc_test/rh_local)) - 
+     &       2*G*Ms**2./(PI*(rh_local-rc_test)**3.)*(rc_test*LOG(4.) +
+     &       rh_local*LOG(4.) - 2*rc_test*LOG(1.+rh_local/rc_test)-
+     &       2*rh_local*LOG(1.+rc_test/rh_local)))
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION rtnewt(x1, x2, xacc)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      INTEGER JMAX, j
+      REAL*8 x1, x2, xacc
+      EXTERNAL funcd
+      PARAMETER (JMAX=20)
+      REAL*8 f, df, dx
+
+      rtnewt = 0.5*(x1+x2)
+      DO 11 j=1,JMAX
+          CALL funcd(rtnewt, f, df)
+          dx = f/df
+C          write(*,*) pe, f, df, dx
+          rtnewt = rtnewt - dx
+          IF((x1 - rtnewt)*(rtnewt - x2) .LT. 0.) THEN
+               WRITE(*,*) 'rtnewt jumped out of brackets'
+               READ(*,*)
+          ENDIF
+          IF(abs(dx) .LT. xacc) RETURN
+ 11   CONTINUE
+      WRITE(*,*) 'rtnewt exceeded maximum iterations'
+      READ(*,*)
+      END

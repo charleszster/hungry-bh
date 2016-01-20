@@ -1,6 +1,6 @@
 C***********************************************************************
 C To compile -
-C     gfortran -o hermite hermite.f
+C      gfortran -o hermite hermite_added_SO_profile.f SO_params.f NFW_params.f
 C
 C To run -
 C     hermite < input.txt
@@ -11,8 +11,13 @@ C
 C***********************************************************************
 C
 C
+      REAL*8 start_time, end_time, total_time
+      CALL cpu_time(start_time)
       CALL get_data
       CALL integrate
+      CALL cpu_time(end_time)
+      total_time = end_time - start_time
+      WRITE(*,*) start_time, end_time, total_time
 C          -----
       END
 C
@@ -27,7 +32,7 @@ C***********************************************************************
       INCLUDE 'hermite.h'
 
       INTEGER i
-      REAL*8 SCALEFACTOR, GMASS
+      REAL*8 SCALEFACTOR, GMASS, rh_local
 
 C     Type of potential
       NSCTYPE = 2                 !1= Hernquist, 0= Plummer, 2= Stone & Ostriker
@@ -37,7 +42,7 @@ C     Type of potential
       READ(5,*)nsteps,nout      !number of integration steps, and output interval
       READ(5,*)dt               !time step length [Myr]
       IF (NSCTYPE.EQ.2) THEN
-        rc = 100.0	!totally arbitrary initial core radius for Stone & Ostriker profile
+        rc = 100.0		!totally arbitrary initial core radius for Stone & Ostriker profile
         Ms = galaxy_mass(t0)    !initial galaxy mass (t0 defined in hermite.h)
         rs = r200(t0)           !initial galaxy scale radius
       ELSE
@@ -54,6 +59,9 @@ C     Read in test particle positions and velocities
          CALL NSCMASS(GMASS, x(i))
          vy(i) = sqrt(G*GMASS/x(i))  !vy(i)/SCALEFACTOR; TEMPORARILY SET VY(I) FOR CIRCULAR ORBIT TO TEST SO PROFILE
          vz(i) = vz(i)/SCALEFACTOR
+         ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
+         pe = pe_func(SO_rh(), rc)
+         energy = ke + pe
  10   CONTINUE
       CLOSE(8)
 C
@@ -73,7 +81,8 @@ C
       INCLUDE 'hermite.h'
 
       INTEGER i, j !j = particle, i= timestep
-      REAL*8 dt1,dt2,dt3,DTSQ,DTSQ12C,DF,SUM,AT3,BT2,r
+      REAL*8 dt1,dt2,dt3,DTSQ,DTSQ12C,DF,SUM,AT3,BT2,r, low_rc,
+     &       high_rc, tol
 
       t=t0      !set timer to initial time t0
 
@@ -89,91 +98,97 @@ C          ---
 C    x(0),v(0),a(0),adot(0)
 C          -------
       DO 30 i=1,nsteps
+        IF(t.LT.tmax) THEN
 C
 C OUTPUT THE FOLLOWING VALUES TO SCREEN
-        IF(MOD(i,1000).EQ.0) THEN
-            WRITE(6,*)t,rs,Ms,mass(1)
-        ENDIF
+            IF(MOD(i,1000).EQ.0) THEN
+                WRITE(6,*)t,rs,Ms,mass(1), rc
+            ENDIF
 C
-        DO 10 j=1,nbods
-            x_old(j) = x(j)
-            y_old(j) = y(j)
-            z_old(j) = z(j)
-            vx_old(j) = vx(j)
-            vy_old(j) = vy(j)
-            vz_old(j) = vz(j)
-            adotx_old(j) = adotx(j)
-            adoty_old(j) = adoty(j)
-            adotz_old(j) = adotz(j)
-            ax_old(j) = ax(j)
-            ay_old(j) = ay(j)
-            az_old(j) = az(j)
-            pot_old(j) = pot(j)
- 10     CONTINUE
+            DO 10 j=1,nbods
+                x_old(j) = x(j)
+                y_old(j) = y(j)
+                z_old(j) = z(j)
+                vx_old(j) = vx(j)
+                vy_old(j) = vy(j)
+                vz_old(j) = vz(j)
+                adotx_old(j) = adotx(j)
+                adoty_old(j) = adoty(j)
+                adotz_old(j) = adotz(j)
+                ax_old(j) = ax(j)
+                ay_old(j) = ay(j)
+                az_old(j) = az(j)
+                pot_old(j) = pot(j)
+ 10         CONTINUE
 
 C             -------
-        DO 20 j=1,nbods
+            DO 20 j=1,nbods
 C The predictor step:
-          x(j)=((adotx_old(j)*dt3+ax_old(j))*dt2+vx_old(j))*dt+x_old(j)
-          y(j)=((adoty_old(j)*dt3+ay_old(j))*dt2+vy_old(j))*dt+y_old(j)
-          z(j)=((adotz_old(j)*dt3+az_old(j))*dt2+vz_old(j))*dt+z_old(j)
+              x(j)=((adotx_old(j)*dt3+ax_old(j))*dt2+vx_old(j))*dt+
+     &             x_old(j)
+              y(j)=((adoty_old(j)*dt3+ay_old(j))*dt2+vy_old(j))*dt+
+     &             y_old(j)
+              z(j)=((adotz_old(j)*dt3+az_old(j))*dt2+vz_old(j))*dt+
+     &             z_old(j)
 
-          vx(j)=(adotx_old(j)*dt2+ax_old(j))*dt + vx_old(j)
-          vy(j)=(adoty_old(j)*dt2+ay_old(j))*dt + vy_old(j)
-          vz(j)=(adotz_old(j)*dt2+az_old(j))*dt + vz_old(j)
+              vx(j)=(adotx_old(j)*dt2+ax_old(j))*dt + vx_old(j)
+              vy(j)=(adoty_old(j)*dt2+ay_old(j))*dt + vy_old(j)
+              vz(j)=(adotz_old(j)*dt2+az_old(j))*dt + vz_old(j)
 
 C     x(1),v(1)
 
-          CALL accel
+              CALL accel
 C     
 C     x(1),v(1),a(1),adot(1)
 C Now we Taylor expand to the 5th order (corrector)
-          DTSQ = dt**2
-          DTSQ12C = DTSQ/12.
+              DTSQ = dt**2
+              DTSQ12C = DTSQ/12.
 
-          DF=ax_old(j)-ax(j)
-          SUM=adotx_old(j)+adotx(j)
-          AT3 = 2.0*DF + SUM*dt
-          BT2 = -3.0*DF - (SUM + adotx_old(j))*dt
-          x(j)=x(j)+(0.6*AT3 + BT2)*DTSQ12C
-          vx(j)=vx(j)+ (0.75*AT3+BT2)*dt3
+              DF=ax_old(j)-ax(j)
+              SUM=adotx_old(j)+adotx(j)
+              AT3 = 2.0*DF + SUM*dt
+              BT2 = -3.0*DF - (SUM + adotx_old(j))*dt
+              x(j)=x(j)+(0.6*AT3 + BT2)*DTSQ12C
+              vx(j)=vx(j)+ (0.75*AT3+BT2)*dt3
 
-          DF=ay_old(j)-ay(j)
-          SUM=adoty_old(j)+adoty(j)
-          AT3 = 2.0*DF + SUM*dt
-          BT2 = -3.0*DF - (SUM + adoty_old(j))*dt
-          y(j)=y(j)+(0.6*AT3 + BT2)*DTSQ12C
-          vy(j)=vy(j)+ (0.75*AT3+BT2)*dt3
+              DF=ay_old(j)-ay(j)
+              SUM=adoty_old(j)+adoty(j)
+              AT3 = 2.0*DF + SUM*dt
+              BT2 = -3.0*DF - (SUM + adoty_old(j))*dt
+              y(j)=y(j)+(0.6*AT3 + BT2)*DTSQ12C
+              vy(j)=vy(j)+ (0.75*AT3+BT2)*dt3
 
-          DF=az_old(j)-az(j)
-          SUM=adotz_old(j)+adotz(j)
-          AT3 = 2.0*DF + SUM*dt
-          BT2 = -3.0*DF - (SUM + adotz_old(j))*dt
-          z(j)=z(j)+(0.6*AT3 + BT2)*DTSQ12C
-          vz(j)=vz(j)+(0.75*AT3+BT2)*dt3
-          CALL accel
- 20     CONTINUE
+              DF=az_old(j)-az(j)
+              SUM=adotz_old(j)+adotz(j)
+              AT3 = 2.0*DF + SUM*dt
+              BT2 = -3.0*DF - (SUM + adotz_old(j))*dt
+              z(j)=z(j)+(0.6*AT3 + BT2)*DTSQ12C
+              vz(j)=vz(j)+(0.75*AT3+BT2)*dt3
+              CALL accel
+ 20         CONTINUE
+
+            IF (NSCTYPE.NE.2) THEN  !NOT USED FOR THE SO PROFILE
+                CALL TIDALMASSGAIN(dt)
+            ENDIF
+
+            CALL DIFFUSION(dt)
 
 C     Advance time
-
-        IF (NSCTYPE.NE.2) THEN  !NOT USED FOR THE SO PROFILE
-            CALL DIFFUSION(dt)
-            CALL TIDALMASSGAIN(dt)
-        ENDIF
-        t = t + dt
+            t = t + dt
 C********CHARLES ADDED THIS SECTION SINCE Ms, rs, and mass(i) ARE NOW FUNCTIONS OF TIME********
 C***************************************************************************************
-C        Ms = galaxy_mass(t)
-C        rs = r200(t)
-C        mass(1) = cbhm(t)
+C            Ms = galaxy_mass(t)
+C            rs = r200(t)
+C            mass(1) = cbhm(t)
 C***************************************************************************************
 C***************************************************************************************
-        IF(MOD(i,nout).EQ.0)THEN
+            IF(MOD(i,nout).EQ.0)THEN
 
-            CALL out
+                CALL out
+
+            ENDIF
 
         ENDIF
-
  30   CONTINUE
       
       RETURN
@@ -239,9 +254,8 @@ C***********************************************************************
         INTEGER i
         REAL*8 r,tsrad,rv,R2
 C
-C       Compute acceleration due to Hernquist spheroid
+C       Compute acceleration due to OS profile
 C
-
         IF (NSCTYPE.EQ.2) THEN
             DO 40 i=1,nbods
                 r = sqrt(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
@@ -253,7 +267,9 @@ C
                 adoty(i) = SO_r_tdot(r,i)*y(i)/r
                 adotz(i) = SO_r_tdot(r,i)*z(i)/r
 40          CONTINUE
-
+C
+C       Compute acceleration due to Hernquist spheroid
+C
         ELSE IF (NSCTYPE.EQ.1) THEN
             DO 10 i=1,nbods
                 r = sqrt(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
@@ -371,11 +387,15 @@ C The particles should conserve their total energy
          l(i) = sqrt(l(i))
          R = SQRT(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
          CALL NSCSIGMA(SIG, R)
-         WRITE(10+i,99)t,x(i),y(i),z(i),vx(i),vy(i),vz(i),mass(i)
-     &              ,e(i),l(i),SIG
+C         WRITE(10+i,99)t,x(i),y(i),z(i),vx(i),vy(i),vz(i),mass(i),
+C     &              e(i),l(i),SIG
+         WRITE(10+i,99)t,x(i),y(i),z(i),R,vx(i),vy(i),vz(i),mass(i),
+     &              rc,pe,pe_func(SO_rh(),rc)
+
  10   CONTINUE
 
- 99   FORMAT(11(1pe12.4))
+C 99   FORMAT(11(1pe12.4))
+ 99   FORMAT(9(1pe12.4), 3(1pe15.7))
 
       RETURN
       END
@@ -460,6 +480,7 @@ C***********************************************************************
       REAL*8  DELTAW, DELTAE, DELTAV, VSMOOTH
       REAL*8  DVP, DVP2, DVBOT2, FBOT, GAUSS
       REAL*8  vxp, vyp, vzp, vp, x1, y1, z1
+      REAL*8 low_rc, high_rc, tol
       INTEGER I
 *
       IF (NSCTYPE.EQ.1) THEN
@@ -547,12 +568,22 @@ C         unit vector perpendicular to direction of motion
 
           DELTAE = DELTAE-0.5*mass(i)*VBH*VBH
 *
-          DELTAW = DELTAW + DELTAE  !Sum up work done by diffusion parallel to orbital motion
+          IF(R.LT.rc) THEN
+              DELTAW = DELTAW + DELTAE  !Sum up work done by diffusion parallel to orbital motion
+          END IF
 *
  100  CONTINUE
 *
       DELTAW = -2.0*DELTAW
-      IF (NSCTYPE.EQ.1) THEN
+      IF (NSCTYPE.EQ.2) THEN
+          IF(R.LT.rc) THEN
+              pe = pe - DELTAW
+              low_rc = rc/2.
+              high_rc = rc*2.
+              tol = 1.d-4
+              rc = rtnewt(low_rc, high_rc, tol)
+          END IF
+      ELSE IF (NSCTYPE.EQ.1) THEN
         rs = 1.0/(1.0/rs+6.0/G*DELTAW/Ms**2)
       ELSE
         rs = 1.0/(1.0/rs+3.3953054526/G*DELTAW/(Ms*Ms))
