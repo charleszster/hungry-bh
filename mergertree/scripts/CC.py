@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#! /Users/chaz/anaconda/bin/python
+##!/usr/bin/env python
   
 import sys
 import math
@@ -106,9 +107,9 @@ def get_output_params(input_params, verbose=False):
     x = math.sqrt(abs(WK))*DCMR
     if x > 0.1:
       if WK > 0:
-        ratio =  0.5*(exp(x)-exp(-x))/x 
+        ratio =  0.5*(math.exp(x)-math.exp(-x))/x 
       else:
-        ratio = sin(x)/x
+        ratio = math.sin(x)/x
     else:
       y = x*x
       if WK < 0: y = -y
@@ -128,9 +129,9 @@ def get_output_params(input_params, verbose=False):
     x = math.sqrt(abs(WK))*DCMR
     if x > 0.1:
       if WK > 0:
-        ratio = (0.125*(exp(2.*x)-exp(-2.*x))-x/2.)/(x*x*x/3.)
+        ratio = (0.125*(math.exp(2.*x)-math.exp(-2.*x))-x/2.)/(x*x*x/3.)
       else:
-        ratio = (x/2. - sin(2.*x)/4.)/(x*x*x/3.)
+        ratio = (x/2. - math.sin(2.*x)/4.)/(x*x*x/3.)
     else:
       y = x*x
       if WK < 0: y = -y

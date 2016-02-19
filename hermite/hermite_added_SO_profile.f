@@ -17,7 +17,7 @@ C
       CALL integrate
       CALL cpu_time(end_time)
       total_time = end_time - start_time
-      WRITE(*,*) start_time, end_time, total_time
+C      WRITE(*,*) start_time, end_time, total_time
 C          -----
       END
 C
@@ -31,8 +31,8 @@ C
 C***********************************************************************
       INCLUDE 'hermite.h'
 
-      INTEGER i
-      REAL*8 SCALEFACTOR, GMASS, rh_local
+      INTEGER i, num_bhs, guest_bhrow !guest_bhrow represents the row number of the black hole we want to use from Infalling_BH_masses_galaxy_1 file.
+      REAL*8 SCALEFACTOR, GMASS, rh_local, phi, theta
 
 C     Type of potential
       NSCTYPE = 2                 !1= Hernquist, 0= Plummer, 2= Stone & Ostriker
@@ -41,28 +41,53 @@ C     Type of potential
       READ(5,*)nbods            !number of particles; here always 1
       READ(5,*)nsteps,nout      !number of integration steps, and output interval
       READ(5,*)dt               !time step length [Myr]
-      IF (NSCTYPE.EQ.2) THEN
-        rc = 100.0		!totally arbitrary initial core radius for Stone & Ostriker profile
-        Ms = galaxy_mass(t0)    !initial galaxy mass (t0 defined in hermite.h)
-        rs = r200(t0)           !initial galaxy scale radius
-      ELSE
-        rc = 1.0                !totally arbitrary initial core radius for Hernquist and Plummer profiles
-        READ(5,*)Ms,rs
-      ENDIF
       SCALEFACTOR = sqrt(1.0)
+
+C     Read in array of guest black holes
+      OPEN(UNIT=7,FILE='InfallBHmasses_gal_1_biggest.txt',STATUS='OLD')
+      READ(7,*) !Read and throw away header line
+      num_bhs=1
+ 5    READ(7,*, END=10) guest_bhs(num_bhs,1), guest_bhs(num_bhs,2),
+     &                  guest_bhs(num_bhs,3)
+          num_bhs=num_bhs+1
+          GO TO 5
+ 10   CLOSE(7)
 C     Read in test particle positions and velocities
       OPEN(UNIT=8,FILE='model.txt',STATUS='OLD')
-      DO 10 i=1,nbods
-         READ(8,*) x(i),y(i),z(i),vx(i),vy(i),vz(i)
-         mass(i) = cbhm(t0)	!Initial mass of central black hole i
-         vx(i) = vx(i)/SCALEFACTOR
+C     Choose which black hole we want to drop into the galaxy; from Infalling_BH_masses_galaxy_1 file
+      READ(8,*) guest_bhrow
+
+      DO 20 i=1,nbods
+         mass(i) = guest_bhs(guest_bhrow,3) !Can choose any guest black hole from Infalling_BH_masses_galaxy_1 file
+         infall_time = guest_bhs(guest_bhrow,2)*1000. !Converted to Myr
+         IF (NSCTYPE.EQ.2) THEN
+           READ(8,*) rc				!totally arbitrary initial core radius for Stone & Ostriker profile
+           Ms = galaxy_mass(t0+infall_time)	!initial galaxy mass (t0 defined in hermite.h)
+           rs = r200(t0+infall_time)		!initial galaxy scale radius
+         ELSE
+           rc = 1.0                !totally arbitrary initial core radius for Hernquist and Plummer profiles
+           READ(5,*)Ms,rs
+         ENDIF
+C         phi=rand()*2.*PI !azimuth angle
+C         theta=rand()*PI  !polar angle
+C         x(i)=eff_rad(t0+infall_time)*sin(theta)*cos(phi)
+C         y(i)=eff_rad(t0+infall_time)*sin(theta)*sin(phi)
+C         z(i)=eff_rad(t0+infall_time)*cos(theta)
+C         READ(8,*) x(i),y(i),z(i),vx(i),vy(i),vz(i)
+C         READ(8,*) vx(i),vy(i),vz(i)
+         x(i) = eff_rad(t0+infall_time)
          CALL NSCMASS(GMASS, x(i))
+         y(i) = 0.0
+         z(i) = 0.0
+         vx(i) = 0.0 !vx(i)/SCALEFACTOR
          vy(i) = sqrt(G*GMASS/x(i))  !vy(i)/SCALEFACTOR; TEMPORARILY SET VY(I) FOR CIRCULAR ORBIT TO TEST SO PROFILE
-         vz(i) = vz(i)/SCALEFACTOR
+         vz(i) = 0.0 !vz(i)/SCALEFACTOR
+         WRITE(*,*) infall_time,mass(i),rc,eff_rad(t0+infall_time),x(i),
+     &              y(i),z(i),GMASS,vy(i),SO_rh()
          ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
          pe = pe_func(SO_rh(), rc)
          energy = ke + pe
- 10   CONTINUE
+ 20   CONTINUE
       CLOSE(8)
 C
 
@@ -81,10 +106,10 @@ C
       INCLUDE 'hermite.h'
 
       INTEGER i, j !j = particle, i= timestep
-      REAL*8 dt1,dt2,dt3,DTSQ,DTSQ12C,DF,SUM,AT3,BT2,r, low_rc,
+      REAL*8 dt1,dt2,dt3,DTSQ,DTSQ12C,DF,SUM,AT3,BT2,r,low_rc,
      &       high_rc, tol
 
-      t=t0      !set timer to initial time t0
+      t=t0+infall_time      !set timer to initial time t0
 
       dt1=dt
       dt2=dt/2.
@@ -94,15 +119,16 @@ C          -----
       CALL accel
 C
       CALL out
-C          ---
-C    x(0),v(0),a(0),adot(0)
-C          -------
-      DO 30 i=1,nsteps
+C
+      r = sqrt(x(1)**2+y(1)**2+z(1)**2)
+C      DO 30 i=1,nsteps
+      i=1
+ 30   IF (i.LE.nsteps .AND. r.GT.(0.2*rc)) THEN
         IF(t.LT.tmax) THEN
 C
 C OUTPUT THE FOLLOWING VALUES TO SCREEN
             IF(MOD(i,1000).EQ.0) THEN
-                WRITE(6,*)t,rs,Ms,mass(1), rc
+                WRITE(6,*)t,rc,r,pe
             ENDIF
 C
             DO 10 j=1,nbods
@@ -175,72 +201,25 @@ C Now we Taylor expand to the 5th order (corrector)
 
 C     Advance time
             t = t + dt
-C********CHARLES ADDED THIS SECTION SINCE Ms, rs, and mass(i) ARE NOW FUNCTIONS OF TIME********
-C***************************************************************************************
-C            Ms = galaxy_mass(t)
-C            rs = r200(t)
-C            mass(1) = cbhm(t)
-C***************************************************************************************
-C***************************************************************************************
+            Ms = galaxy_mass(t)
+            rs = r200(t)
+            ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
+            pe = pe_func(SO_rh(), rc)
+            energy = ke + pe
             IF(MOD(i,nout).EQ.0)THEN
-
                 CALL out
-
             ENDIF
 
         ENDIF
- 30   CONTINUE
+        i=i+1
+        r = sqrt(x(1)**2+y(1)**2+z(1)**2)
+        GOTO 30
+      ENDIF
+C 30   CONTINUE
       
       RETURN
       END
 
-C***********************************************************************
-C
-C
-      FUNCTION cbhm(timo)
-C
-C
-C***********************************************************************
-      INCLUDE 'hermite.h'
-      REAL*8 timo
-
-      cbhm = 10**(mbch1*exp(mbch2/(timo/1000)))
-
-      RETURN
-      END
-
-C***********************************************************************
-C
-C
-      FUNCTION galaxy_mass(timo)
-C
-C
-C***********************************************************************
-      INCLUDE 'hermite.h'
-      REAL*8 timo
-      
-      galaxy_mass = 10**(mg1*(timo/1000)**7. + mg2*(timo/1000)**6. + 
-     &      mg3*(timo/1000)**5. + mg4*(timo/1000)**4. + 
-     &      mg5*(timo/1000)**3. + mg6*(timo/1000)**2. + 
-     &      mg7*(timo/1000) + mg8)
-
-      RETURN
-      END
-
-C***********************************************************************
-C
-C
-      FUNCTION z_conv(timo)
-C
-C
-C***********************************************************************
-      INCLUDE 'hermite.h'
-      REAL*8 timo
-
-      z_conv = 7.20196192*(timo/1000)**(-0.59331986) - 1.52145449
-
-      RETURN
-      END
 
 C***********************************************************************
 C
@@ -324,6 +303,86 @@ C
       RETURN
       END
 
+
+C***********************************************************************
+C
+C
+      FUNCTION cbhm(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      cbhm = 10**(mbch1*exp(mbch2/(timo/1000)))
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION galaxy_mass(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+      
+      galaxy_mass = 10**(mg1*(timo/1000)**7. + mg2*(timo/1000)**6. + 
+     &      mg3*(timo/1000)**5. + mg4*(timo/1000)**4. + 
+     &      mg5*(timo/1000)**3. + mg6*(timo/1000)**2. + 
+     &      mg7*(timo/1000) + mg8)
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION z_conv(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      z_conv = 7.20196192*(timo/1000)**(-0.59331986) - 1.52145449
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION stlr_mass(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      stlr_mass = 10.**(sm1*timo**7. + sm2*timo**6. + sm3*timo**5. +
+     &                 sm4*timo**4. + sm5*timo**3. + sm6*timo**2. +
+     &                 sm7*timo + sm8)
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION eff_rad(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      eff_rad = 2500.*(stlr_mass(timo)/1.e+11)**0.73*(1.+z_conv(timo))**
+     &          (-0.98)
+      RETURN
+      END
 
 
 C***********************************************************************

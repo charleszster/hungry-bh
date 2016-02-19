@@ -1,6 +1,6 @@
 C***********************************************************************
 C To compile -
-C     gfortran -o hermite hermite.f
+C      gfortran -o hermite hermite_added_SO_profile.f SO_params.f NFW_params.f
 C
 C To run -
 C     hermite < input.txt
@@ -11,8 +11,13 @@ C
 C***********************************************************************
 C
 C
+      REAL*8 start_time, end_time, total_time
+      CALL cpu_time(start_time)
       CALL get_data
       CALL integrate
+      CALL cpu_time(end_time)
+      total_time = end_time - start_time
+C      WRITE(*,*) start_time, end_time, total_time
 C          -----
       END
 C
@@ -26,8 +31,8 @@ C
 C***********************************************************************
       INCLUDE 'hermite.h'
 
-      INTEGER i
-      REAL*8 SCALEFACTOR, GMASS
+      INTEGER i, num_bhs, guest_bhrow !guest_bhrow represents the row number of the black hole we want to use from Infalling_BH_masses_galaxy_1 file.
+      REAL*8 SCALEFACTOR, GMASS, rh_local, phi, theta
 
 C     Type of potential
       NSCTYPE = 2                 !1= Hernquist, 0= Plummer, 2= Stone & Ostriker
@@ -36,25 +41,53 @@ C     Type of potential
       READ(5,*)nbods            !number of particles; here always 1
       READ(5,*)nsteps,nout      !number of integration steps, and output interval
       READ(5,*)dt               !time step length [Myr]
-      IF (NSCTYPE.EQ.2) THEN
-        rc = 100.0	!totally arbitrary initial core radius for Stone & Ostriker profile
-        Ms = galaxy_mass(t0)    !initial galaxy mass (t0 defined in hermite.h)
-        rs = r200(t0)           !initial galaxy scale radius
-      ELSE
-        rc = 1.0                !totally arbitrary initial core radius for Hernquist and Plummer profiles
-        READ(5,*)Ms,rs
-      ENDIF
       SCALEFACTOR = sqrt(1.0)
+
+C     Read in array of guest black holes
+      OPEN(UNIT=7,FILE='InfallBHmasses_gal_1_biggest.txt',STATUS='OLD')
+      READ(7,*) !Read and throw away header line
+      num_bhs=1
+ 5    READ(7,*, END=10) guest_bhs(num_bhs,1), guest_bhs(num_bhs,2),
+     &                  guest_bhs(num_bhs,3)
+          num_bhs=num_bhs+1
+          GO TO 5
+ 10   CLOSE(7)
 C     Read in test particle positions and velocities
       OPEN(UNIT=8,FILE='model.txt',STATUS='OLD')
-      DO 10 i=1,nbods
-         READ(8,*) x(i),y(i),z(i),vx(i),vy(i),vz(i)
-         mass(i) = cbhm(t0)	!Initial mass of central black hole i
-         vx(i) = vx(i)/SCALEFACTOR
-         CALL NSCMASS(GMASS, R)
+C     Choose which black hole we want to drop into the galaxy; from Infalling_BH_masses_galaxy_1 file
+      READ(8,*) guest_bhrow
+
+      DO 20 i=1,nbods
+         mass(i) = guest_bhs(guest_bhrow,3) !Can choose any guest black hole from Infalling_BH_masses_galaxy_1 file
+         infall_time = guest_bhs(guest_bhrow,2)*1000. !Converted to Myr
+         IF (NSCTYPE.EQ.2) THEN
+           READ(8,*) rc				!totally arbitrary initial core radius for Stone & Ostriker profile
+           Ms = galaxy_mass(t0+infall_time)	!initial galaxy mass (t0 defined in hermite.h)
+           rs = r200(t0+infall_time)		!initial galaxy scale radius
+         ELSE
+           rc = 1.0                !totally arbitrary initial core radius for Hernquist and Plummer profiles
+           READ(5,*)Ms,rs
+         ENDIF
+C         phi=rand()*2.*PI !azimuth angle
+C         theta=rand()*PI  !polar angle
+C         x(i)=eff_rad(t0+infall_time)*sin(theta)*cos(phi)
+C         y(i)=eff_rad(t0+infall_time)*sin(theta)*sin(phi)
+C         z(i)=eff_rad(t0+infall_time)*cos(theta)
+C         READ(8,*) x(i),y(i),z(i),vx(i),vy(i),vz(i)
+C         READ(8,*) vx(i),vy(i),vz(i)
+         x(i) = eff_rad(t0+infall_time)
+         CALL NSCMASS(GMASS, x(i))
+         y(i) = 0.0
+         z(i) = 0.0
+         vx(i) = 0.0 !vx(i)/SCALEFACTOR
          vy(i) = sqrt(G*GMASS/x(i))  !vy(i)/SCALEFACTOR; TEMPORARILY SET VY(I) FOR CIRCULAR ORBIT TO TEST SO PROFILE
-         vz(i) = vz(i)/SCALEFACTOR
- 10   CONTINUE
+         vz(i) = 0.0 !vz(i)/SCALEFACTOR
+         WRITE(*,*) infall_time,mass(i),eff_rad(t0+infall_time),x(i),
+     &              y(i),z(i),GMASS,vy(i),SO_rh()
+         ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
+         pe = pe_func(SO_rh(), rc)
+         energy = ke + pe
+ 20   CONTINUE
       CLOSE(8)
 C
 
@@ -73,9 +106,10 @@ C
       INCLUDE 'hermite.h'
 
       INTEGER i, j !j = particle, i= timestep
-      REAL*8 dt1,dt2,dt3,DTSQ,DTSQ12C,DF,SUM,AT3,BT2,r
+      REAL*8 dt1,dt2,dt3,DTSQ,DTSQ12C,DF,SUM,AT3,BT2,r,low_rc,
+     &       high_rc, tol
 
-      t=t0      !set timer to initial time t0
+      t=t0+infall_time      !set timer to initial time t0
 
       dt1=dt
       dt2=dt/2.
@@ -85,147 +119,107 @@ C          -----
       CALL accel
 C
       CALL out
-C          ---
-C    x(0),v(0),a(0),adot(0)
-C          -------
-      DO 30 i=1,nsteps
+C
+      r = sqrt(x(1)**2+y(1)**2+z(1)**2)
+C      DO 30 i=1,nsteps
+      i=1
+ 30   IF (i.LE.nsteps .AND. r.GT.(0.2*rc)) THEN
+        IF(t.LT.tmax) THEN
 C
 C OUTPUT THE FOLLOWING VALUES TO SCREEN
-        IF(MOD(i,1000).EQ.0) THEN
-            WRITE(6,*)t,rs,Ms,mass(1)
-        ENDIF
+            IF(MOD(i,1000).EQ.0) THEN
+                WRITE(6,*)t,rc,r,pe
+            ENDIF
 C
-        DO 10 j=1,nbods
-            x_old(j) = x(j)
-            y_old(j) = y(j)
-            z_old(j) = z(j)
-            vx_old(j) = vx(j)
-            vy_old(j) = vy(j)
-            vz_old(j) = vz(j)
-            adotx_old(j) = adotx(j)
-            adoty_old(j) = adoty(j)
-            adotz_old(j) = adotz(j)
-            ax_old(j) = ax(j)
-            ay_old(j) = ay(j)
-            az_old(j) = az(j)
-            pot_old(j) = pot(j)
- 10     CONTINUE
+            DO 10 j=1,nbods
+                x_old(j) = x(j)
+                y_old(j) = y(j)
+                z_old(j) = z(j)
+                vx_old(j) = vx(j)
+                vy_old(j) = vy(j)
+                vz_old(j) = vz(j)
+                adotx_old(j) = adotx(j)
+                adoty_old(j) = adoty(j)
+                adotz_old(j) = adotz(j)
+                ax_old(j) = ax(j)
+                ay_old(j) = ay(j)
+                az_old(j) = az(j)
+                pot_old(j) = pot(j)
+ 10         CONTINUE
 
 C             -------
-        DO 20 j=1,nbods
+            DO 20 j=1,nbods
 C The predictor step:
-          x(j)=((adotx_old(j)*dt3+ax_old(j))*dt2+vx_old(j))*dt+x_old(j)
-          y(j)=((adoty_old(j)*dt3+ay_old(j))*dt2+vy_old(j))*dt+y_old(j)
-          z(j)=((adotz_old(j)*dt3+az_old(j))*dt2+vz_old(j))*dt+z_old(j)
+              x(j)=((adotx_old(j)*dt3+ax_old(j))*dt2+vx_old(j))*dt+
+     &             x_old(j)
+              y(j)=((adoty_old(j)*dt3+ay_old(j))*dt2+vy_old(j))*dt+
+     &             y_old(j)
+              z(j)=((adotz_old(j)*dt3+az_old(j))*dt2+vz_old(j))*dt+
+     &             z_old(j)
 
-          vx(j)=(adotx_old(j)*dt2+ax_old(j))*dt + vx_old(j)
-          vy(j)=(adoty_old(j)*dt2+ay_old(j))*dt + vy_old(j)
-          vz(j)=(adotz_old(j)*dt2+az_old(j))*dt + vz_old(j)
+              vx(j)=(adotx_old(j)*dt2+ax_old(j))*dt + vx_old(j)
+              vy(j)=(adoty_old(j)*dt2+ay_old(j))*dt + vy_old(j)
+              vz(j)=(adotz_old(j)*dt2+az_old(j))*dt + vz_old(j)
 
 C     x(1),v(1)
 
-          CALL accel
+              CALL accel
 C     
 C     x(1),v(1),a(1),adot(1)
 C Now we Taylor expand to the 5th order (corrector)
-          DTSQ = dt**2
-          DTSQ12C = DTSQ/12.
+              DTSQ = dt**2
+              DTSQ12C = DTSQ/12.
 
-          DF=ax_old(j)-ax(j)
-          SUM=adotx_old(j)+adotx(j)
-          AT3 = 2.0*DF + SUM*dt
-          BT2 = -3.0*DF - (SUM + adotx_old(j))*dt
-          x(j)=x(j)+(0.6*AT3 + BT2)*DTSQ12C
-          vx(j)=vx(j)+ (0.75*AT3+BT2)*dt3
+              DF=ax_old(j)-ax(j)
+              SUM=adotx_old(j)+adotx(j)
+              AT3 = 2.0*DF + SUM*dt
+              BT2 = -3.0*DF - (SUM + adotx_old(j))*dt
+              x(j)=x(j)+(0.6*AT3 + BT2)*DTSQ12C
+              vx(j)=vx(j)+ (0.75*AT3+BT2)*dt3
 
-          DF=ay_old(j)-ay(j)
-          SUM=adoty_old(j)+adoty(j)
-          AT3 = 2.0*DF + SUM*dt
-          BT2 = -3.0*DF - (SUM + adoty_old(j))*dt
-          y(j)=y(j)+(0.6*AT3 + BT2)*DTSQ12C
-          vy(j)=vy(j)+ (0.75*AT3+BT2)*dt3
+              DF=ay_old(j)-ay(j)
+              SUM=adoty_old(j)+adoty(j)
+              AT3 = 2.0*DF + SUM*dt
+              BT2 = -3.0*DF - (SUM + adoty_old(j))*dt
+              y(j)=y(j)+(0.6*AT3 + BT2)*DTSQ12C
+              vy(j)=vy(j)+ (0.75*AT3+BT2)*dt3
 
-          DF=az_old(j)-az(j)
-          SUM=adotz_old(j)+adotz(j)
-          AT3 = 2.0*DF + SUM*dt
-          BT2 = -3.0*DF - (SUM + adotz_old(j))*dt
-          z(j)=z(j)+(0.6*AT3 + BT2)*DTSQ12C
-          vz(j)=vz(j)+(0.75*AT3+BT2)*dt3
-          CALL accel
- 20     CONTINUE
+              DF=az_old(j)-az(j)
+              SUM=adotz_old(j)+adotz(j)
+              AT3 = 2.0*DF + SUM*dt
+              BT2 = -3.0*DF - (SUM + adotz_old(j))*dt
+              z(j)=z(j)+(0.6*AT3 + BT2)*DTSQ12C
+              vz(j)=vz(j)+(0.75*AT3+BT2)*dt3
+              CALL accel
+ 20         CONTINUE
+
+            IF (NSCTYPE.NE.2) THEN  !NOT USED FOR THE SO PROFILE
+                CALL TIDALMASSGAIN(dt)
+            ENDIF
+
+            CALL DIFFUSION(dt)
 
 C     Advance time
-
-        IF (NSCTYPE.NE.2) THEN  !NOT USED FOR THE SO PROFILE
-            CALL DIFFUSION(dt)
-            CALL TIDALMASSGAIN(dt)
-        ENDIF
-        t = t + dt
-C********CHARLES ADDED THIS SECTION SINCE Ms, rs, and mass(i) ARE NOW FUNCTIONS OF TIME********
-C***************************************************************************************
-C        Ms = galaxy_mass(t)
-C        rs = r200(t)
-C        mass(1) = cbhm(t)
-C***************************************************************************************
-C***************************************************************************************
-        IF(MOD(i,nout).EQ.0)THEN
-
-            CALL out
+            t = t + dt
+            Ms = galaxy_mass(t)
+            rs = r200(t)
+            ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
+            pe = pe_func(SO_rh(), rc)
+            energy = ke + pe
+            IF(MOD(i,nout).EQ.0)THEN
+                CALL out
+            ENDIF
 
         ENDIF
-
- 30   CONTINUE
+        i=i+1
+        r = sqrt(x(1)**2+y(1)**2+z(1)**2)
+        GOTO 30
+      ENDIF
+C 30   CONTINUE
       
       RETURN
       END
 
-C***********************************************************************
-C
-C
-      FUNCTION cbhm(timo)
-C
-C
-C***********************************************************************
-      INCLUDE 'hermite.h'
-      REAL*8 timo
-
-      cbhm = 10**(mbch1*exp(mbch2/(timo/1000)))
-
-      RETURN
-      END
-
-C***********************************************************************
-C
-C
-      FUNCTION galaxy_mass(timo)
-C
-C
-C***********************************************************************
-      INCLUDE 'hermite.h'
-      REAL*8 timo
-      
-      galaxy_mass = 10**(mg1*(timo/1000)**7. + mg2*(timo/1000)**6. + 
-     &      mg3*(timo/1000)**5. + mg4*(timo/1000)**4. + 
-     &      mg5*(timo/1000)**3. + mg6*(timo/1000)**2. + 
-     &      mg7*(timo/1000) + mg8)
-
-      RETURN
-      END
-
-C***********************************************************************
-C
-C
-      FUNCTION z_conv(timo)
-C
-C
-C***********************************************************************
-      INCLUDE 'hermite.h'
-      REAL*8 timo
-
-      z_conv = 7.20196192*(timo/1000)**(-0.59331986) - 1.52145449
-
-      RETURN
-      END
 
 C***********************************************************************
 C
@@ -239,9 +233,8 @@ C***********************************************************************
         INTEGER i
         REAL*8 r,tsrad,rv,R2
 C
-C       Compute acceleration due to Hernquist spheroid
+C       Compute acceleration due to OS profile
 C
-
         IF (NSCTYPE.EQ.2) THEN
             DO 40 i=1,nbods
                 r = sqrt(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
@@ -253,7 +246,9 @@ C
                 adoty(i) = SO_r_tdot(r,i)*y(i)/r
                 adotz(i) = SO_r_tdot(r,i)*z(i)/r
 40          CONTINUE
-
+C
+C       Compute acceleration due to Hernquist spheroid
+C
         ELSE IF (NSCTYPE.EQ.1) THEN
             DO 10 i=1,nbods
                 r = sqrt(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
@@ -308,6 +303,86 @@ C
       RETURN
       END
 
+
+C***********************************************************************
+C
+C
+      FUNCTION cbhm(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      cbhm = 10**(mbch1*exp(mbch2/(timo/1000)))
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION galaxy_mass(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+      
+      galaxy_mass = 10**(mg1*(timo/1000)**7. + mg2*(timo/1000)**6. + 
+     &      mg3*(timo/1000)**5. + mg4*(timo/1000)**4. + 
+     &      mg5*(timo/1000)**3. + mg6*(timo/1000)**2. + 
+     &      mg7*(timo/1000) + mg8)
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION z_conv(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      z_conv = 7.20196192*(timo/1000)**(-0.59331986) - 1.52145449
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION stlr_mass(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      stlr_mass = 10.**(sm1*timo**7. + sm2*timo**6. + sm3*timo**5. +
+     &                 sm4*timo**4. + sm5*timo**3. + sm6*timo**2. +
+     &                 sm7*timo + sm8)
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION eff_rad(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      eff_rad = 2500.*(stlr_mass(timo)/1.e+11)**0.73*(1.+z_conv(timo))**
+     &          (-0.98)
+      RETURN
+      END
 
 
 C***********************************************************************
@@ -371,11 +446,15 @@ C The particles should conserve their total energy
          l(i) = sqrt(l(i))
          R = SQRT(x(i)*x(i)+y(i)*y(i)+z(i)*z(i))
          CALL NSCSIGMA(SIG, R)
-         WRITE(10+i,99)t,x(i),y(i),z(i),vx(i),vy(i),vz(i),mass(i)
-     &              ,e(i),l(i),SIG
+C         WRITE(10+i,99)t,x(i),y(i),z(i),vx(i),vy(i),vz(i),mass(i),
+C     &              e(i),l(i),SIG
+         WRITE(10+i,99)t,x(i),y(i),z(i),R,vx(i),vy(i),vz(i),mass(i),
+     &              rc,pe,pe_func(SO_rh(),rc)
+
  10   CONTINUE
 
- 99   FORMAT(11(1pe12.4))
+C 99   FORMAT(11(1pe12.4))
+ 99   FORMAT(9(1pe12.4), 3(1pe15.7))
 
       RETURN
       END
@@ -460,6 +539,7 @@ C***********************************************************************
       REAL*8  DELTAW, DELTAE, DELTAV, VSMOOTH
       REAL*8  DVP, DVP2, DVBOT2, FBOT, GAUSS
       REAL*8  vxp, vyp, vzp, vp, x1, y1, z1
+      REAL*8 low_rc, high_rc, tol
       INTEGER I
 *
       IF (NSCTYPE.EQ.1) THEN
@@ -547,12 +627,22 @@ C         unit vector perpendicular to direction of motion
 
           DELTAE = DELTAE-0.5*mass(i)*VBH*VBH
 *
-          DELTAW = DELTAW + DELTAE  !Sum up work done by diffusion parallel to orbital motion
+          IF(R.LT.rc) THEN
+              DELTAW = DELTAW + DELTAE  !Sum up work done by diffusion parallel to orbital motion
+          END IF
 *
  100  CONTINUE
 *
       DELTAW = -2.0*DELTAW
-      IF (NSCTYPE.EQ.1) THEN
+      IF (NSCTYPE.EQ.2) THEN
+          IF(R.LT.rc) THEN
+              pe = pe - DELTAW
+              low_rc = rc/2.
+              high_rc = rc*2.
+              tol = 1.d-4
+              rc = rtnewt(low_rc, high_rc, tol)
+          END IF
+      ELSE IF (NSCTYPE.EQ.1) THEN
         rs = 1.0/(1.0/rs+6.0/G*DELTAW/Ms**2)
       ELSE
         rs = 1.0/(1.0/rs+3.3953054526/G*DELTAW/(Ms*Ms))

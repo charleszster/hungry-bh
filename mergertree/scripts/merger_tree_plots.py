@@ -98,10 +98,7 @@ def curve_fit_central_bh_masses(key, central_bh_mass):
     mass_log10 = np.log10(central_bh_mass[:, 1])
     sigma = np.ones(len(time))
     sigma[[0, -1]] = 0.01
-    if key in ['1', '51']:
-        func = analyze_clusters.exp_func
-    if key in ['65']:
-        func = analyze_clusters.exp_func
+    func = analyze_clusters.exp_func
     popt, pcov = scipy.optimize.curve_fit(func, time, mass_log10, sigma=sigma)
     mass_log10_est = np.array([func(x, *tuple(popt)) for x in time])
     central_bh_mass_fitted = [time, [10**y for y in mass_log10_est]]  #[time, mass_log10_est]

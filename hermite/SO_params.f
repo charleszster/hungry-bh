@@ -254,9 +254,10 @@ C***********************************************************************
       DO 11 j=1,JMAX
           CALL funcd(rtnewt, f, df)
           dx = f/df
-C          write(*,*) pe, f, df, dx
           rtnewt = rtnewt - dx
+C          write(*,*)x1, x2,rtnewt
           IF((x1 - rtnewt)*(rtnewt - x2) .LT. 0.) THEN
+               write(*,*) Ms,rs,pe, f, df, dx
                WRITE(*,*) 'rtnewt jumped out of brackets'
                READ(*,*)
           ENDIF

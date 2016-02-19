@@ -31,6 +31,13 @@ def get_galaxies_by_id(galaxies_cluster):
         galaxies_by_id[str(k)] = group
     return galaxies_by_id
 
+def get_smbh_by_id(smbh_cluster):
+    smbh_by_id = {}
+    for k, g in itertools.groupby(smbh_cluster, key=operator.itemgetter(2)):
+        group = list(g)
+        smbh_by_id[str(k)] = group
+    return smbh_by_id
+
 def get_galaxies_masses(galaxies_by_id):
     galaxies_masses = {}
     final_masses = {}
@@ -92,6 +99,15 @@ def curve_fit_most_massive_galaxies(galaxies_max_mass):
         ydata_est = [poly_func(x, *tuple(popt[k])) for x in xdata]
         galaxies_max_mass_fitted[k] = [v[0], v[1], [10**y for y in ydata_est]]
     return popt, galaxies_max_mass_fitted
+
+def curve_fit_any_galaxy_mass(galaxies_masses, galaxy_num):
+    xdata = galaxies_masses[galaxy_num][1]
+    ydata_log10 = np.log10(galaxies_masses[galaxy_num][2])
+    sigma = np.ones(len(xdata))
+    sigma[[0, -1]] = 0.01
+    popt, pcov = scipy.optimize.curve_fit(poly_func, xdata, ydata_log10, sigma=sigma)
+    return popt
+
 
 def plot_max_masses_galaxies_orig_and_fitted(galaxies_max_mass, galaxies_max_mass_fitted, top_masses):
     for k, v in galaxies_max_mass.iteritems():

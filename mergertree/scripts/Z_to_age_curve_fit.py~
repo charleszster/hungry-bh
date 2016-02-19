@@ -1,5 +1,5 @@
-#!/home/charles/anaconda/bin/python
-# #!/Users/chaz/anaconda/bin/python  #This is the python interpreter I use on Mac
+#!/Users/chaz/anaconda/bin/python  #This is the python interpreter I use on Mac
+# #!/home/charles/anaconda/bin/python
 
 import CC
 import numpy as np
