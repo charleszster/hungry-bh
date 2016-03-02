@@ -9,7 +9,8 @@ import CC
 import pickle
 import Constants
 
-cluster_folder = Constants.cluster_folder
+cluster_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism', 'mergertree',
+                              'cluster_files')
 
 def get_cluster_file(file):
     cluster_file = open(file, 'r')

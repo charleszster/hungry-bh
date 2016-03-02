@@ -13,15 +13,15 @@ sys.path.append('/Users/chaz/Dropbox/Columbia/Ostriker/Cannibalism_code/mergertr
 import sympy as sp
 from sympy.solvers import solve
 from sympy import Symbol
-import Constants
+import Constants_NFW
 import galaxy_mass_coefficients as gmc
 from calculate_r200 import get_H, get_r200
 
-plots_folder = Constants.plots_folder
-G = Constants.G
-delta_vir = Constants.delta_vir
-t0 = Constants.t0 #Myr
-h = Constants.h
+plots_folder = Constants_NFW.plots_folder
+G = Constants_NFW.G
+delta_vir = Constants_NFW.delta_vir
+t0 = Constants_NFW.t0 #Myr
+h = Constants_NFW.h
 mg = gmc.mg
 
 def get_z(t):
@@ -142,7 +142,7 @@ def run():
         R_half_mass_list.append(R_half_mass)
         R_H = R_half_mass
         R_H_list.append(R_H)
-        R_C = Constants.R_C
+        R_C = Constants_NFW.R_C
         rho_c = get_rho_c(m200, R_C, R_H)
         rho_c_list.append(rho_c)
 
@@ -218,8 +218,8 @@ def run():
 #    plt.title('sigma as function of R for r_h=%.f' % (R_H_array[R_H_index]))
     fig.suptitle(''.join(['sigma as f\'n of r for r_h=%.1f, m200=%.f' % (R_H, m200)]), fontsize=12, y=1.)
     fig.tight_layout()
-    fig.savefig(''.join([plots_folder, 'sigma_as_func_of_r.png']))
-    
-    
+    fig.savefig(os.path.join(plots_folder, 'sigma_as_func_of_r.png'))
+    print plots_folder
+
 if __name__ == '__main__':
     run()

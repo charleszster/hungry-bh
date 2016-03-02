@@ -63,7 +63,7 @@ C     Choose which black hole we want to drop into the galaxy; from Infalling_BH
          IF (NSCTYPE.EQ.2) THEN
            READ(8,*) rc				!totally arbitrary initial core radius for Stone & Ostriker profile
            Ms = galaxy_mass(t0+infall_time)	!initial galaxy mass (t0 defined in hermite.h)
-           rs = r200(t0+infall_time)		!initial galaxy scale radius
+C           rs = r200(t0+infall_time)		!initial galaxy scale radius
          ELSE
            rc = 1.0                !totally arbitrary initial core radius for Hernquist and Plummer profiles
            READ(5,*)Ms,rs
@@ -202,7 +202,7 @@ C Now we Taylor expand to the 5th order (corrector)
 C     Advance time
             t = t + dt
             Ms = galaxy_mass(t)
-            rs = r200(t)
+C            rs = r200(t)
             ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
             pe = pe_func(SO_rh(), rc)
             energy = ke + pe

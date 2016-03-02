@@ -4,12 +4,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize
-import Constants
+import Constants_NFW
 
-H0 = Constants.H0
-WM = Constants.WM
-WV = Constants.WV
-G = Constants.G
+H0 = Constants_NFW.H0
+WM = Constants_NFW.WM
+WV = Constants_NFW.WV
+G = Constants_NFW.G
 h = 0.7
 delta_vir = 200.
 

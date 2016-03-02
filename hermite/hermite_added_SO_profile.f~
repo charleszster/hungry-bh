@@ -82,7 +82,7 @@ C         READ(8,*) vx(i),vy(i),vz(i)
          vx(i) = 0.0 !vx(i)/SCALEFACTOR
          vy(i) = sqrt(G*GMASS/x(i))  !vy(i)/SCALEFACTOR; TEMPORARILY SET VY(I) FOR CIRCULAR ORBIT TO TEST SO PROFILE
          vz(i) = 0.0 !vz(i)/SCALEFACTOR
-         WRITE(*,*) infall_time,mass(i),eff_rad(t0+infall_time),x(i),
+         WRITE(*,*) infall_time,mass(i),rc,eff_rad(t0+infall_time),x(i),
      &              y(i),z(i),GMASS,vy(i),SO_rh()
          ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
          pe = pe_func(SO_rh(), rc)

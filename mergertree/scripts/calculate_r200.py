@@ -15,7 +15,9 @@ H0 = Constants.H0
 WM = Constants.WM
 WV = Constants.WV
 G = Constants.G
-cluster_folder = Constants.cluster_folder
+cluster_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism', 'mergertree',
+                              'cluster_files')
+
 galaxies_max_mass_fitted_file = '3_max_mass_galaxies_fitted.pkl'
 
 def get_H(z):
