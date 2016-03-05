@@ -1,0 +1,27 @@
+#! /home/charles/anaconda/bin/python
+
+import numpy as np
+import sympy as sp
+
+G = sp.Symbol('G')
+Mtot = sp.Symbol('Mtot')
+rh = sp.Symbol('rh')
+rc = sp.Symbol('rc')
+r = sp.Symbol('r')
+
+def Y1r1():
+    Yr1r1 = -(4.*r1*(np.pi*r1**2. + r*r1 - 3.*np.pi*r**2. - 2.*(r1**2. - 3.*r**2.)*atan(r1/r)) -\
+             16.*r**3.*log(1. + r1**2./r**2.) + 3.*r**3.*(np.pi**2. - 4.*atan(r/r1)**2.)) /\
+             (24.*r**3.*r1**2.)
+    return Yr1r1
+
+def Yrhrc():
+    Yrhrc = 1./(2.*r**2.) + log(r**2./(r**2. + rc**2.))/(2.*rc**2.) - log(1. + rc**2./r**2.)/(6.*rh**2.)
+    return Yrhrc
+
+def Yrcrh():
+    Yrcrh = (np.pi*rc + r - 2.*rc*atan(rc/r))/(6.*r**3.) - log(1. + rc**2./r**2.)/(6.*rc**2.) -\
+             np.pi*rc/(2.*r*rh**2.) + rc*atan(rc/r)/(r*rh**2.) - log(1. + rc**2./r**2.)/(2.*rh**2.)
+    return Yrcrh
+
+
