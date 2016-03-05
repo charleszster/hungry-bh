@@ -9,7 +9,8 @@ import pickle
 import os
 import scipy.optimize
 import sys
-sys.path.append('/Users/chaz/Dropbox/Columbia/Ostriker/Cannibalism_code/mergertree/scripts')
+sys.path.append('/Users/chaz/Dropbox/Columbia/Ostriker/Cannibalism_code/mergertree/scripts')	#Mac
+sys.path.append('/home/charles/Dropbox/Columbia/Ostriker/Cannibalism_code/mergertree/scripts')	#Linux
 import sympy as sp
 from sympy.solvers import solve
 from sympy import Symbol
@@ -219,7 +220,7 @@ def run():
     fig.suptitle(''.join(['sigma as f\'n of r for r_h=%.1f, m200=%.f' % (R_H, m200)]), fontsize=12, y=1.)
     fig.tight_layout()
     fig.savefig(os.path.join(plots_folder, 'sigma_as_func_of_r.png'))
-    print plots_folder
+    print(plots_folder)
 
 if __name__ == '__main__':
     run()

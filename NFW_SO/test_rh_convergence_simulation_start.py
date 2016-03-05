@@ -1,5 +1,5 @@
-#! /Users/chaz/anaconda/bin/python	#Mac
-##! /home/charles/anaconda/bin/python
+#! /home/charles/anaconda/bin/python
+##! /Users/chaz/anaconda/bin/python
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -67,13 +67,16 @@ def get_rh_from_my_own_newton(rh0, eff_rad, rc, G, Mtot, sigma, arktan, lahg, sq
         fprime = se.get_dsignear_drh
     tolerance = 0.001
     for i in range(10):
-        rh_next = rh0 - func(rh0, eff_rad, rc, G, Mtot, init_guess=sigma, arktan=arktan, lahg=lahg, squirt=squirt,
-                         pie=pie) / fprime(rh0, eff_rad, rc, G, Mtot, init_guess=sigma, arktan=arktan, lahg=lahg,
+        func_val = func(rh0, eff_rad, rc, G, Mtot, init_guess=sigma, arktan=arktan, lahg=lahg, squirt=squirt,
+                         pie=pie)
+        fprime_val = fprime(rh0, eff_rad, rc, G, Mtot, init_guess=sigma, arktan=arktan, lahg=lahg,
                                            squirt=squirt, pie=pie)
-        if (rh_next-rh0)/rh0 <= np.abs(tolerance):
+        rh_next = rh0 -  func_val / fprime_val
+        if np.abs(rh_next/rh0-1.) <= tolerance:
             return rh_next, i
         else:
             rh0 = rh_next
+            print(func_val, fprime_val, rh_next)
         if i == 9:
             sys.exit('rh couldn\'t converge within 10 iterations!')
 
@@ -98,15 +101,15 @@ def run():
         #Estimate rh from scipy.optimize.newton built-in method
         rh0 = 10000.
         rh = get_rh_from_python_newton(rh0, rc, eff_rad, args)
-        print rh, se.get_sigma_far(rh, eff_rad, rc, G, Mtot, init_guess=0., arktan=arktan, lahg=lahg, squirt=squirt,
-                                    pie=pie), sigma
+        print(Mtot, eff_rad, rh, se.get_sigma_far(rh, eff_rad, rc, G, Mtot, init_guess=0., arktan=arktan, lahg=lahg, squirt=squirt,
+                                    pie=pie), sigma)
 
         #Estimate rh from my own newton method, and count how many iterations it takes to converge
         rh0 = 10000.
         rh, i = get_rh_from_my_own_newton(rh0, *args)
 
-        print rh, i, se.get_sigma_far(rh, eff_rad, rc, G, Mtot, init_guess=0., arktan=arktan, lahg=lahg, squirt=squirt,
-                                    pie=pie), sigma, '\n'
+        print(Mtot, eff_rad, rh, i, se.get_sigma_far(rh, eff_rad, rc, G, Mtot, init_guess=0., arktan=arktan, lahg=lahg, squirt=squirt,
+                                    pie=pie), sigma, '\n')
 
 if __name__ == '__main__':
     run()

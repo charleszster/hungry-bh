@@ -7,10 +7,10 @@ import math
 def get_output_params(input_params, verbose=False):
     length = len(input_params)
     if length < 1:
-        print 'No inputs, no outputs'
+        print('No inputs, no outputs')
         sys.exit()
     elif length > 4:
-        print 'Supplied too many values'
+        print('Supplied too many values')
         sys.exit()
 
 # if one value, assume Benchmark Model, input is z
@@ -140,35 +140,34 @@ def get_output_params(input_params, verbose=False):
     V_Gpc = 4.*math.pi*((0.001*c/H0)**3)*VCM
 
     if verbose:
-      print 'For H_o = ' + '%1.1f' % H0 + ', Omega_M = ' + '%1.2f' % WM + ', Omega_vac = ',
-      print '%1.2f' % WV + ', z = ' + '%1.3f' % z
-      print 'It is now ' + '%1.1f' % age_Gyr + ' Gyr since the Big Bang.'
-      print 'The age at redshift z was ' + '%1.1f' % zage_Gyr + ' Gyr.'
-      print 'The light travel time was ' + '%1.1f' % DTT_Gyr + ' Gyr.'
-      print 'The comoving radial distance, which goes into Hubbles law, is',
-      print '%1.1f' % DCMR_Mpc + ' Mpc or ' + '%1.1f' % DCMR_Gyr + ' Gly.'
-      print 'The comoving volume within redshift z is ' + '%1.1f' % V_Gpc + ' Gpc^3.'
-      print 'The angular size distance D_A is ' + '%1.1f' % DA_Mpc + ' Mpc or',
-      print '%1.1f' % DA_Gyr + ' Gly.'
-      print 'This gives a scale of ' + '%.2f' % kpc_DA + ' kpc/".'
-      print 'The luminosity distance D_L is ' + '%1.1f' % DL_Mpc + ' Mpc or ' + '%1.1f' % DL_Gyr + ' Gly.'
-      print 'The distance modulus, m-M, is '+'%1.2f' % (5*math.log10(DL_Mpc*1e6)-5)
+      print('For H_o = ' + '%1.1f' % H0 + ', Omega_M = ' + '%1.2f' % WM + ', Omega_vac = ',)
+      print('%1.2f' % WV + ', z = ' + '%1.3f' % z)
+      print('It is now ' + '%1.1f' % age_Gyr + ' Gyr since the Big Bang.')
+      print('The age at redshift z was ' + '%1.1f' % zage_Gyr + ' Gyr.')
+      print('The light travel time was ' + '%1.1f' % DTT_Gyr + ' Gyr.')
+      print('The comoving radial distance, which goes into Hubbles law, is',)
+      print('%1.1f' % DCMR_Mpc + ' Mpc or ' + '%1.1f' % DCMR_Gyr + ' Gly.')
+      print('The comoving volume within redshift z is ' + '%1.1f' % V_Gpc + ' Gpc^3.')
+      print('The angular size distance D_A is ' + '%1.1f' % DA_Mpc + ' Mpc or',)
+      print('%1.1f' % DA_Gyr + ' Gly.')
+      print('This gives a scale of ' + '%.2f' % kpc_DA + ' kpc/".')
+      print('The luminosity distance D_L is ' + '%1.1f' % DL_Mpc + ' Mpc or ' + '%1.1f' % DL_Gyr + ' Gly.')
+      print('The distance modulus, m-M, is '+'%1.2f' % (5*math.log10(DL_Mpc*1e6)-5))
 #    else:
-#      print '%1.2f' % zage_Gyr,
-#      print '%1.2f' % DCMR_Mpc,
-#      print '%1.2f' % kpc_DA,
-#      print '%1.2f' % (5*math.log10(DL_Mpc*1e6)-5)
+#      print('%1.2f' % zage_Gyr,)
+#      print('%1.2f' % DCMR_Mpc,)
+#      print('%1.2f' % kpc_DA,)
+#      print('%1.2f' % (5*math.log10(DL_Mpc*1e6)-5))
     return zage_Gyr
 
 def run():
     try:
       if sys.argv[1] == '-h':
-        print '''Cosmology calculator ala Ned Wright (www.astro.ucla.edu/~wright)
-input values = redshift, Ho, Omega_m, Omega_vac
-output values = age at z, distance in Mpc, kpc/arcsec, apparent to abs mag conversion
-
-Options:   -h for this message 
-           -v for verbose response '''
+        print('Cosmology calculator ala Ned Wright (www.astro.ucla.edu/~wright)\
+               input values = redshift, Ho, Omega_m, Omega_vac\
+               output values = age at z, distance in Mpc, kpc/arcsec, apparent to abs mag conversion\
+               Options:   -h for this message \
+               -v for verbose response')
         sys.exit()
       if sys.argv[1] == '-v':
         input_params = [float(arg) for arg in sys.argv[2:]]
@@ -177,9 +176,9 @@ Options:   -h for this message
         input_params = [float(arg) for arg in sys.argv[1:]]
         get_output_params(input_params)
     except IndexError:
-      print 'need some values or too many values'
+      print('need some values or too many values')
     except ValueError:
-      print 'nonsense value or option'
+      print('nonsense value or option')
 
 if __name__ == '__main__':
     run()

@@ -36,13 +36,13 @@ def process_smbh_cluster(H0, WM, WV):
     F = open(os.path.join(cluster_folder, 'smbh_cluster.pkl'), 'wb')
     pickle.dump(smbh_cluster, F)
     F.close()
-    print 'Saved SMBH Cluster array to pickle'
+    print('Saved SMBH Cluster array to pickle')
     print
-    print smbh_cluster[0]
-    print smbh_cluster[int(len(smbh_cluster)/4)]
-    print smbh_cluster[int(len(smbh_cluster)/2)]
-    print smbh_cluster[3*int(len(smbh_cluster)/4)]
-    print smbh_cluster[len(smbh_cluster)-1]
+    print(smbh_cluster[0])
+    print(smbh_cluster[int(len(smbh_cluster)/4)])
+    print(smbh_cluster[int(len(smbh_cluster)/2)])
+    print(smbh_cluster[3*int(len(smbh_cluster)/4)])
+    print(smbh_cluster[len(smbh_cluster)-1])
     return smbh_cluster
 
 def process_galaxies_cluster(H0, WM, WV):
@@ -65,11 +65,11 @@ def process_galaxies_cluster(H0, WM, WV):
     #galaxies_cluster = np.array([np.array(line, dtype=object) for line in galaxies_cluster], dtype=object)
     galaxies_cluster = np.array(galaxies_cluster, dtype=object)
     galaxies_cluster = sorted(galaxies_cluster, key=lambda l:l[2])
-#    print galaxies_cluster
+#    print(galaxies_cluster)
     F = open(os.path.join(cluster_folder, 'galaxies_cluster.pkl'), 'wb')
     pickle.dump(galaxies_cluster, F)
     F.close()
-    print 'Saved Galaxies Cluster array to pickle'    
+    print('Saved Galaxies Cluster array to pickle')
     return galaxies_cluster
 
 def get_pickled_file(cluster_file):

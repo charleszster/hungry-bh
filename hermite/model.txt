@@ -1,4 +1,4 @@
-2				!black hole row
+1				!black hole row
 100.				!initial rc
 0.0e+00 26.0e+00  0.0e+00	![km/s]
 110.0e+00  0.0e+00 0.0e+00	![pc]

@@ -32,7 +32,7 @@ C***********************************************************************
       INCLUDE 'hermite.h'
 
       INTEGER i, num_bhs, guest_bhrow !guest_bhrow represents the row number of the black hole we want to use from Infalling_BH_masses_galaxy_1 file.
-      REAL*8 SCALEFACTOR, GMASS, rh_local, phi, theta
+      REAL*8 GMASS, phi, theta
 
 C     Type of potential
       NSCTYPE = 2                 !1= Hernquist, 0= Plummer, 2= Stone & Ostriker
@@ -41,7 +41,6 @@ C     Type of potential
       READ(5,*)nbods            !number of particles; here always 1
       READ(5,*)nsteps,nout      !number of integration steps, and output interval
       READ(5,*)dt               !time step length [Myr]
-      SCALEFACTOR = sqrt(1.0)
 
 C     Read in array of guest black holes
       OPEN(UNIT=7,FILE='InfallBHmasses_gal_1_biggest.txt',STATUS='OLD')
@@ -52,8 +51,10 @@ C     Read in array of guest black holes
           num_bhs=num_bhs+1
           GO TO 5
  10   CLOSE(7)
+
 C     Read in test particle positions and velocities
       OPEN(UNIT=8,FILE='model.txt',STATUS='OLD')
+
 C     Choose which black hole we want to drop into the galaxy; from Infalling_BH_masses_galaxy_1 file
       READ(8,*) guest_bhrow
 
@@ -63,29 +64,32 @@ C     Choose which black hole we want to drop into the galaxy; from Infalling_BH
          IF (NSCTYPE.EQ.2) THEN
            READ(8,*) rc				!totally arbitrary initial core radius for Stone & Ostriker profile
            Ms = galaxy_mass(t0+infall_time)	!initial galaxy mass (t0 defined in hermite.h)
-C           rs = r200(t0+infall_time)		!initial galaxy scale radius
          ELSE
            rc = 1.0                !totally arbitrary initial core radius for Hernquist and Plummer profiles
            READ(5,*)Ms,rs
          ENDIF
+         eff_rad = get_eff_rad(t0+infall_time)
+         sigma_faber = get_sigma_faber(t0+infall_time)
 C         phi=rand()*2.*PI !azimuth angle
 C         theta=rand()*PI  !polar angle
-C         x(i)=eff_rad(t0+infall_time)*sin(theta)*cos(phi)
-C         y(i)=eff_rad(t0+infall_time)*sin(theta)*sin(phi)
-C         z(i)=eff_rad(t0+infall_time)*cos(theta)
+C         x(i)=eff_rad*sin(theta)*cos(phi)
+C         y(i)=eff_rad*sin(theta)*sin(phi)
+C         z(i)=eff_rad*cos(theta)
 C         READ(8,*) x(i),y(i),z(i),vx(i),vy(i),vz(i)
 C         READ(8,*) vx(i),vy(i),vz(i)
-         x(i) = eff_rad(t0+infall_time)
+         x(i) = eff_rad
+         rh = 10000.
+         CALL find_rh_newt(rh)
          CALL NSCMASS(GMASS, x(i))
          y(i) = 0.0
          z(i) = 0.0
-         vx(i) = 0.0 !vx(i)/SCALEFACTOR
-         vy(i) = sqrt(G*GMASS/x(i))  !vy(i)/SCALEFACTOR; TEMPORARILY SET VY(I) FOR CIRCULAR ORBIT TO TEST SO PROFILE
-         vz(i) = 0.0 !vz(i)/SCALEFACTOR
-         WRITE(*,*) infall_time,mass(i),rc,eff_rad(t0+infall_time),x(i),
-     &              y(i),z(i),GMASS,vy(i),SO_rh()
+         vx(i) = 0.0
+         vy(i) = sqrt(G*GMASS/x(i))  !TEMPORARILY SET VY(I) FOR CIRCULAR ORBIT TO TEST SO PROFILE
+         vz(i) = 0.0
+C         WRITE(*,*) infall_time,mass(i),rc,eff_rad, y(i),z(i),GMASS,
+C     &              vy(i),rh
          ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
-         pe = pe_func(SO_rh(), rc)
+         pe = pe_func(rc)
          energy = ke + pe
  20   CONTINUE
       CLOSE(8)
@@ -128,7 +132,7 @@ C      DO 30 i=1,nsteps
 C
 C OUTPUT THE FOLLOWING VALUES TO SCREEN
             IF(MOD(i,1000).EQ.0) THEN
-                WRITE(6,*)t,rc,r,pe
+                WRITE(6,*)t,r,rc,rh,pe
             ENDIF
 C
             DO 10 j=1,nbods
@@ -202,9 +206,12 @@ C Now we Taylor expand to the 5th order (corrector)
 C     Advance time
             t = t + dt
             Ms = galaxy_mass(t)
+            eff_rad = get_eff_rad(t)
+            sigma_faber = get_sigma_faber(t)
+            CALL find_rh_newt(rh)
 C            rs = r200(t)
             ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
-            pe = pe_func(SO_rh(), rc)
+            pe = pe_func(rc)
             energy = ke + pe
             IF(MOD(i,nout).EQ.0)THEN
                 CALL out
@@ -372,15 +379,30 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      FUNCTION eff_rad(timo)
+      FUNCTION get_eff_rad(timo)
 C
 C
 C***********************************************************************
       INCLUDE 'hermite.h'
       REAL*8 timo
 
-      eff_rad = 2500.*(stlr_mass(timo)/1.e+11)**0.73*(1.+z_conv(timo))**
-     &          (-0.98)
+      get_eff_rad = 2500.*(stlr_mass(timo)/1.e+11)**0.73*(1.+
+     &              z_conv(timo))**(-0.98)
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION get_sigma_faber(timo)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 timo
+
+      get_sigma_faber = 190.*(stlr_mass(timo)/1.e+11)**0.2*(1.+
+     &                  z_conv(timo))**(0.47)
       RETURN
       END
 
@@ -449,7 +471,7 @@ C The particles should conserve their total energy
 C         WRITE(10+i,99)t,x(i),y(i),z(i),vx(i),vy(i),vz(i),mass(i),
 C     &              e(i),l(i),SIG
          WRITE(10+i,99)t,x(i),y(i),z(i),R,vx(i),vy(i),vz(i),mass(i),
-     &              rc,pe,pe_func(SO_rh(),rc)
+     &              rc,pe,pe_func(rc)
 
  10   CONTINUE
 
@@ -533,7 +555,7 @@ C***********************************************************************
 *       ----------------------------------
 *
       INCLUDE 'hermite.h'
-      REAL*8  R2, VBH, GMASS, SIG, RHO, FP, R, rh
+      REAL*8  R2, VBH, GMASS, SIG, RHO, FP, R, rh_clog
       REAL*8  CHI, CLAMBDA, GAMMAC, FCHI, DSTEP
       REAL*8  ERF_NR, ERF_TEMP
       REAL*8  DELTAW, DELTAE, DELTAV, VSMOOTH
@@ -542,10 +564,12 @@ C***********************************************************************
       REAL*8 low_rc, high_rc, tol
       INTEGER I
 *
-      IF (NSCTYPE.EQ.1) THEN
-        rh = (1.0+sqrt(2.0))*rs
+      IF (NSCTYPE.EQ.2) THEN
+        rh_clog = rh
+      ELSE IF (NSCTYPE.EQ.1) THEN
+        rh_clog = (1.0+sqrt(2.0))*rs
       ELSE
-        rh = 1.305*rs
+        rh_clog = 1.305*rs
       ENDIF
 
       VSMOOTH = 0.001
@@ -563,7 +587,7 @@ c         get mass, density, sigma
 
           CHI = VBH/(1.414213562*SIG)
 
-          CLAMBDA = LOG(R/rh*Ms/mass(I)) !Mtot/MBH*RBH/Rh
+          CLAMBDA = LOG(R/rh_clog*Ms/mass(I)) !Mtot/MBH*RBH/Rh
           IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
 
           ERF_TEMP = ERF_NR(CHI)
@@ -639,8 +663,7 @@ C         unit vector perpendicular to direction of motion
               pe = pe - DELTAW
               low_rc = rc/2.
               high_rc = rc*2.
-              tol = 1.d-4
-              rc = rtnewt(low_rc, high_rc, tol)
+              CALL find_rc_newt(low_rc, high_rc, rc)
           END IF
       ELSE IF (NSCTYPE.EQ.1) THEN
         rs = 1.0/(1.0/rs+6.0/G*DELTAW/Ms**2)
@@ -662,13 +685,12 @@ C         unit vector perpendicular to direction of motion
 
         SUBROUTINE NSCMASS(GMASS, R)
         INCLUDE 'hermite.h'
-        REAL*8 GMASS, R, Rt, rh_local
+        REAL*8 GMASS, R, Rt
 
         IF (NSCTYPE.EQ.2) THEN
-        rh_local = SO_rh()
-            GMASS = 4*PI*rc**2.*rh_local**2.*rho_c()*
-     &              (rh_local*atan(R/rh_local)-rc*atan(R/rc))/
-     &              (rh_local**2.-rc**2.)
+            GMASS = 4*PI*rc**2.*rh**2.*rho_c()*
+     &              (rh*atan(R/rh)-rc*atan(R/rc))/
+     &              (rh**2.-rc**2.)
         ELSE IF (NSCTYPE.EQ.1) THEN
             GMASS = Ms*R*R*(R+rs)**(-2)
         ELSE
@@ -691,7 +713,7 @@ C         unit vector perpendicular to direction of motion
         RMIN = 1.e-10
 
         IF (NSCTYPE.EQ.2) THEN
-            RHO = rho_c()/((1+R**2./rc**2.)*(1+R**2./SO_rh()**2.))
+            RHO = rho_c()/((1+R**2./rc**2.)*(1+R**2./rh**2.))
         ELSE IF (NSCTYPE.EQ.1) THEN
             IF (R.GT.RMIN) THEN
                 RHO = Ms/(2.0*PI)*rs/R*(R+rs)**(-3)
@@ -714,11 +736,10 @@ C         unit vector perpendicular to direction of motion
 
         SUBROUTINE NSCSIGMA(SIG, R)
         INCLUDE 'hermite.h'
-        REAL*8 SIG, R, Rt, rh_local
+        REAL*8 SIG, R, Rt
 
         IF (NSCTYPE.EQ.2) THEN
-            rh_local = SO_rh()
-            r_lim = sqrt(rc*rh_local)
+            r_lim = sqrt(rc*rh)
             IF (R.LE.r_lim) THEN
                 SIG = sigma_near(R)
             ELSE

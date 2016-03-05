@@ -41,7 +41,7 @@ def run():
     for key, value in galaxies_max_mass.iteritems():
         for i, H in enumerate(H_z):
             r200.append(get_r200(value[2][i], H))
-    print r200
+    print(r200)
 
 if __name__ == '__main__':
     run()
