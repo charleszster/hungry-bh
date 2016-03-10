@@ -135,27 +135,6 @@ C       for tidal mass gain
 
 100     CONTINUE
 
-C       Include mass gain through tidal disruptions/captures
-        DO J=1,N
-            I = index4output(J)
-            R_T = RSTAR*(MA(I)/MSTAR)**0.3333333
-            R_TC = 2.0*R_T   !Tidal capture radius (approximated here)
-            DO 1 WHILE (dPROB_TC(I).GT.0.0)
-                CALL RANDOM_NUMBER(RNR)
-                IF (dPROB_TC(I).GT.RNR) THEN      !check for tidal capture, tidal disruption or physical collision
-                    MA(I) = MA(I) + 0.5*MSTAR
-                    MCL = MCL - MSTAR
-                    CALL RANDOM_NUMBER(RNR2)
-                    B_IMPACT = RNR2*R_TC*R_TC
-                    IF (B_IMPACT.GT.R_T*R_T
-     &              .OR.B_IMPACT.LT.RSTAR*RSTAR) THEN    !test if it's a tidal capture or a collision
-                        MA(I) = MA(I) + 0.5*MSTAR
-                    END IF
-                END IF
-                dPROB_TC(I) = dPROB_TC(I)-1.0
- 1           CONTINUE
-             dPROB_TC(I) = 0.0
-        END DO
         MASS=0.0
         DO J=1,N
             I = index4output(J)
@@ -213,41 +192,12 @@ C       Include diffusion through encounters with stars
 *           OUTPUT TO FILES
 **************************************
 
-C        DO I=1,NA
-C            VBH = SQRT(VA(3*I-2)**2+XA(3*I-1)**2
-C     &                   +XA(3*I)**2+4.0*RS*RS)
-C            RGAL = SQRT(XA(3*I-2)**2+XA(3*I-1)**2
-C     &                   +XA(3*I)**2+4.0*RS*RS)
-C            EPOT = ...
-C            EA(I) = 0.5*MA(I)*VBH**2+EPOT
-C        END DO
-C YET, HAS TO BE WRITTEN!
-
 
 C  short output to save space
         WRITE(66,234) time*14.90763847,MCL,RPL,
      &    (Ma(k), SQRT(XA(3*k-2)**2+XA(3*k-1)**2
      &                   +XA(3*k)**2), k=1,na)
 
-C  diagnostic output
-C        WRITE(66,234) time*14.90763847,MCL,RPL,
-C     &    (Ma(k), xa(3*k-2),xa(3*k-1),xa(3*k),
-C     &     va(3*k-2)/14.90763847,va(3*k-1)/14.90763847,
-C     &     va(3*k)/14.90763847, PROB_TC(k), k=1,na)
-C
-C        NTIME = time/DTOUT*14.90763847+0.99999 !round up
-C        NTIME = NTIME*DTOUT
-C        WRITE(OUTTIME,233) NTIME
-C233        FORMAT(I6.6)
-C        OPEN(20, FILE=OUTNAME(1:LD)//'.'//OUTTIME, STATUS='REPLACE')
-C        DO I=1,NA
-C            WRITE(20,*) ma(I),
-C     &           xa(3*I-2), xa(3*I-1),xa(3*I),va(3*I-2)
-C     &           /14.90763847, va(3*I-1)/14.90763847,
-C     &           va(3*I)/14.90763847
-C        END DO
-C        NOUT = NOUT + 1
-C        CLOSE(20)
         CALL FLUSH(66)
 
 234     FORMAT(1x,f18.6,1p,600g13.5)
@@ -356,23 +306,8 @@ C       ENCOUNTER PROBABILITY COMPUTATION FOR TIDAL MASS GAIN
             RS=2.d0*MA(I)/Clight**2 !Softening of order 4xSchwarzschild radius
             RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1))**2
      &                   +(XA(3*I))**2+4.0*RS*RS)
-
-
-            RHO = GALRHO(RGAL)
-            SIGMA = GALSIG(RGAL)
-
-C           Tidal disruption
-            R_T = RSTAR*(MA(I)/MSTAR)**0.3333333
-            LBD = 10.0**0.11*(2.0*MSTAR/(RSTAR*SIGMA*SIGMA))**0.0899
-            R_TC = LBD*R_T   !Tidal capture radius
-            SCAP = PI*R_TC*R_TC*(1.0+2.0*(MA(I)+
-     &           MSTAR)/(R_TC*SIGMA*SIGMA)) !capture cross section
-            dPROB = RHO/MSTAR*SCAP*SIGMA*DELT
-            PROB_TC(I) = PROB_TC(I) + dPROB
-            dPROB_TC(I) = dPROB_TC(I) + dPROB
-
 C           Handle escape of particles -- set escape radius here!
-            IF (RGAL.gt.1000.0) THEN
+            IF (RGAL.gt.100000.0) THEN
                 CALL ESCAPE(J)
             END IF
 
