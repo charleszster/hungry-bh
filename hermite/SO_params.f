@@ -456,7 +456,7 @@ C***********************************************************************
 C              WRITE(*,*) Ms, eff_rad, f, df, rh_curr, 
 C     &        ABS(rh_next/rh_curr-1.)
               rh_curr = rh_next
-              rh = rh_curr
+              rh = rh_next
           ENDIF
  12   CONTINUE
       WRITE(*,*) 'find_rh_newt exceeded maximum iterations'

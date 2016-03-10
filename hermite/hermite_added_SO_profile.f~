@@ -89,7 +89,7 @@ C         READ(8,*) vx(i),vy(i),vz(i)
 C         WRITE(*,*) infall_time,mass(i),rc,eff_rad, y(i),z(i),GMASS,
 C     &              vy(i),rh
          ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
-         pe = pe_func(rh, rc)
+         pe = pe_func(rc)
          energy = ke + pe
  20   CONTINUE
       CLOSE(8)
@@ -211,7 +211,7 @@ C     Advance time
             CALL find_rh_newt(rh)
 C            rs = r200(t)
             ke = 0.5*mass(1)*(vx(1)**2. + vy(1)**2. + vz(1)**2.)
-            pe = pe_func(rh, rc)
+            pe = pe_func(rc)
             energy = ke + pe
             IF(MOD(i,nout).EQ.0)THEN
                 CALL out
@@ -470,8 +470,8 @@ C The particles should conserve their total energy
          CALL NSCSIGMA(SIG, R)
 C         WRITE(10+i,99)t,x(i),y(i),z(i),vx(i),vy(i),vz(i),mass(i),
 C     &              e(i),l(i),SIG
-         WRITE(10+i,99)t,x(i),y(i),z(i),R,vx(i),vy(i),vz(i),mass(i),
-     &              rc,pe,pe_func(rh,rc)
+         WRITE(10+i,99)t,x(i),y(i),z(i),R,SQRT(rc*rh),vx(i),vy(i),vz(i),
+     &              rc,rh,pe
 
  10   CONTINUE
 

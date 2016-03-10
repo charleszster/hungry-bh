@@ -470,8 +470,8 @@ C The particles should conserve their total energy
          CALL NSCSIGMA(SIG, R)
 C         WRITE(10+i,99)t,x(i),y(i),z(i),vx(i),vy(i),vz(i),mass(i),
 C     &              e(i),l(i),SIG
-         WRITE(10+i,99)t,x(i),y(i),z(i),R,vx(i),vy(i),vz(i),mass(i),
-     &              rc,pe,pe_func(rc)
+         WRITE(10+i,99)t,x(i),y(i),z(i),R,eff_rad,SQRT(rc*rh),vx(i),
+     &                 vy(i),vz(i),rc,rh,pe
 
  10   CONTINUE
 
