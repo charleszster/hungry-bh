@@ -13,19 +13,27 @@
         INCLUDE 'archain.h'
         COMMON/DIAGNOSTICS/GAMMA,H,IWR
         COMMON/justforfun/Tkin,Upot,dSkin,dSpot
-        COMMON/outputindex/index4output(200),N_ini
+        COMMON/outputindex/index4output(200)
         COMMON/collision/icollision,ione,itwo,iwarning
-        COMMON/galaxy/rho0,eta1,eta2,eta3,re1,re2,re3
+        COMMON/galaxy/MCL,RPL
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
-     &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX),cmxx(3),cmvx(3)
-        REAL*8 PROB_TD(NMX),PROB_TC(NMX)
-        REAL*8 dPROB_TD(NMX),dPROB_TC(NMX), MSTAR
+     &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX)
+        REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
+        REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT
         LOGICAL NEWREG
         CHARACTER*50 OUTFILE, OUTNAME
         CHARACTER*15 OUTTIME
-        INTEGER NOUT, DTOUT, LD
+        INTEGER NOUT, DTOUT, LD, seed(12)
+        REAL*8  RNR, RNR2
 
-        call srand(1)
+        call srand(1)    !initialize RAND()
+        DO I=1,12        !initialize RANDOM_NUMBER()
+            seed(i) = i
+        END DO
+        CALL RANDOM_SEED(put=seed)
+
+        RSTAR = 1.0*2.25669073e-8   !stellar radius in pc
+        RSTAR = RSTAR*(MSTAR)**0.8  !scale according to R/Rsun = (M/Msun)^0.8
 
 *       Jump here to start a new simulation in the same run.
 666     CONTINUE
@@ -38,23 +46,28 @@
 *       Read input values from STDIN
         READ(5,*,err=999)OUTNAME,N,Nbh,DELTAT,TMAX, DTOUT
         READ(5,*,err=999)IWR,soft,cmet, Clight,Ixc ,spin,tolerance
-        READ(5,*,err=999)rho0,eta1,eta2,eta3,re1,re2,re3
-
+        READ(5,*,err=999)MCL,RPL
 
 *       Initialize variables
         TMAX = TMAX/14.90763847 ! Scaling from pc, Myr, Msun to Nbody units
         DELTAT = DELTAT/14.90763847
         IF (N.LT.2) STOP
-        N_ini=N
+        NA = N
         icollision=0
         TIME=0.0
         ee=soft**2 ! square of soft(ening)
         EPS=tolerance
         ENER0=0
         NEWREG=.TRUE.
-        KSMX=1000! 000 ! only this many steps without RETURN
+        KSMX=10000000 ! only this many steps without RETURN
         NOUT = 0 !count outputs
 
+C       for tidal mass gain
+        DO I=1,NMX
+            PROB_TC(I) = 0.0d0
+            dPROB_TC(I) = 0.0d0
+            EA(I) = 0.0d0
+        END DO
 
         DO I = LEN(OUTNAME),1,-1
             IF (OUTNAME(i:i).NE.' ') GOTO 777
@@ -68,19 +81,50 @@
         WRITE(*,*)
 
         MASS=0.0
-        DO I=1,N
+        DO I=1,NA
             L=3*(I-1)
-            READ(5,*)M(I),(X(L+K),K=1,3),(V(L+K),K=1,3)
-            MASS=MASS+M(I)
-            V(L+1) = V(L+1)/0.06559 !rescaling to internal units
-            V(L+2) = V(L+2)/0.06559
-            V(L+3) = V(L+3)/0.06559
+            READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
+            MASS=MASS+MA(I)
+            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
+            VA(L+2) = VA(L+2)*14.90763847
+            VA(L+3) = VA(L+3)*14.90763847
             index4output(I)=I  ! initialize output index (to be modified in case of merger)
         END DO
 
-c       Put into center-of-mass frame
-        CALL Reduce2cm(x,m,N,cmxx)
-        CALL Reduce2cm(v,m,N,cmvx)
+        CALL Reduce2cm(xa,ma,NA,cmxa)
+        CALL Reduce2cm(va,ma,NA,cmva)
+
+        DO I=1,3
+            CMXX(I) = 0.0
+            CMVX(I) = 0.0
+            CMX(I) = 0.0
+            CMV(I) = 0.0
+        END DO
+
+        DO I=1,NA
+            K=3*(I-1)
+            M(I)=MA(I)
+            X(K+1) = XA(K+1)
+            X(K+2) = XA(K+2)
+            X(K+3) = XA(K+3)
+            V(K+1) = VA(K+1)
+            V(K+2) = VA(K+2)
+            V(K+3) = VA(K+3)
+        END DO
+
+        DO I=1,N
+            L=3*(I-1)
+            MA(I)=M(I)
+            XA(L+1) = X(L+1)+CMXX(1)+CMXA(1)
+            XA(L+2) = X(L+2)+CMXX(2)+CMXA(2)
+            XA(L+3) = X(L+3)+CMXX(3)+CMXA(3)
+            VA(L+1) = V(L+1)+CMVX(1)+CMVA(1)
+            VA(L+2) = V(L+2)+CMVX(2)+CMVA(2)
+            VA(L+3) = V(L+3)+CMVX(3)+CMVA(3)
+        END DO
+
+        DELT = 0.0
+        NEWREG = .true.
 
         GOTO 200
 
@@ -91,14 +135,44 @@ c       Put into center-of-mass frame
 
 100     CONTINUE
 
+C       Include mass gain through tidal disruptions/captures
+        DO J=1,N
+            I = index4output(J)
+            R_T = RSTAR*(MA(I)/MSTAR)**0.3333333
+            R_TC = 2.0*R_T   !Tidal capture radius (approximated here)
+            DO 1 WHILE (dPROB_TC(I).GT.0.0)
+                CALL RANDOM_NUMBER(RNR)
+                IF (dPROB_TC(I).GT.RNR) THEN      !check for tidal capture, tidal disruption or physical collision
+                    MA(I) = MA(I) + 0.5*MSTAR
+                    MCL = MCL - MSTAR
+                    CALL RANDOM_NUMBER(RNR2)
+                    B_IMPACT = RNR2*R_TC*R_TC
+                    IF (B_IMPACT.GT.R_T*R_T
+     &              .OR.B_IMPACT.LT.RSTAR*RSTAR) THEN    !test if it's a tidal capture or a collision
+                        MA(I) = MA(I) + 0.5*MSTAR
+                    END IF
+                END IF
+                dPROB_TC(I) = dPROB_TC(I)-1.0
+ 1           CONTINUE
+             dPROB_TC(I) = 0.0
+        END DO
         MASS=0.0
-        DO I=1,N
-            MASS=MASS+M(I)
+        DO J=1,N
+            I = index4output(J)
+            MASS=MASS+MA(I)
         END DO
 
+C       Include diffusion through encounters with stars
+        CALL DIFFUSION(DELT)
+        NEWREG = .true.
+
+
+        TIME1 = TIME
         CALL CHAINEVOLVE
-     &   (N,X,V,M,TIME,DELTAT,EPS,NEWREG,KSMX,soft,cmet,clight,Ixc,NBH,
-     &    spin,CMXX,CMVX,PROB_TD,PROB_TC,dPROB_TD,dPROB_TC)
+     &   (TIME,DELTAT,EPS,NEWREG,KSMX,soft,cmet,clight,Ixc,NBH,
+     &    spin,PROB_TC,dPROB_TC)
+        TIME2 = TIME
+        DELT = TIME2-TIME1
 
 
 
@@ -120,97 +194,63 @@ c       Put into center-of-mass frame
 
         WRITE(6,123)TIME*14.90763847!  /twopi
      & ,log((Tkin-ENERGY-EnerGR)/Upot),dSkin/dSpot-1,am_error!logH = the primary constant (=0!)
-     & ,N ! print time, logH, N (of bodies left)
+     & ,N, MCL, RPL, CMX(1), CMXA(1)  ! print time, logH, N (of bodies left)
         CALL FLUSH(6)
 123     FORMAT(1x,'T: ',1p,g20.6,' dE/U=',1p,g10.2,
      &   ' dSDOt/sDOtU=',1p,g10.2,
      &   '   d(RxV)/Am=',1p,g10.2,
-     &   ' Nb=',0p,1x,i3)
+     &   ' Nb=',0p,1x,i3,
+     &   '   MCL=',1p,g10.2,
+     &   '   RPL=',1p,g10.2,
+     &   '   CMX=',1p,g10.2,
+     &   '   CMXA=',1p,g10.2)
 
 
 200     CONTINUE
-
-        IF(iwr.GT.-2)THEN
-            DO i=1,3*N_ini
-                xwr(i)=1.e9 ! put all outside
-            END DO
-            DO i=1,N
-                j=index4output(i) ! take still existing particles 2 correct indicies
-                j0=3*j-3
-                i0=3*i-3
-                DO k=1,3
-                    xwr(j0+k)=x(i0+k)+cmxx(k) ! add centre-of-mass (remove cmxx IF U want cm)
-        !                          or replace cmxx(k) by  -x(k) IF U want M1 to be
-        !                          origin (se also SUBROUTINE MERGE_I1_I2)
-                END DO
-            END DO
-           CALL FLUSH(66)
-        END IF ! iwr.GT.-2
-c   IF YOU WANT ORBITAL ELEMENTS WITH RESPECT TO THE CENTRAL BH, activate the statements below
-        IF(iwr.GT.-1)THEN
-            DO j=2,N_ini
-                ai(j)=0
-                ei(j)=0
-                unci(j)=0
-                Omi(j)=0
-                ooi(j)=0
-            END DO
-            DO i=2,N
-                i0=3*i-3
-                DO k=1,3
-                    xw(k)=x(i0+k)-x(k)
-                    vw(k)=v(i0+k)-v(k)
-                END DO
-                mw=m(1)+m(i)
-c       Orbital elements with respect to the central body.
-                j=index4output(i)
-                CALL elmnts
-     & (xw,vw,mw,ai(j),ei(j),moi,unci(j),Omi(j),ooi(j),alfai,qi,tqi)
-            END DO ! i=2,N
 
 
 **************************************
 *           OUTPUT TO FILES
 **************************************
 
-            WRITE(66,234)time*14.90763847,
-     &      (xwr(k),xwr(k+1),xwr(k+2),k=1,3*n_ini,3),
-     &      (M(k), PROB_TD(k), PROB_TC(k),k=1,n_ini)
-            WRITE(71,171)time,(ai(k),k=2,N_ini) ! a   WRITE orbital elements (with respect to M1)
-            WRITE(72,171)time,(ei(k),k=2,N_ini) ! e
-            WRITE(73,171)time,(unci(k),k=2,N_ini) ! i
-            WRITE(74,171)time,(Omi(k),k=2,N_ini)  ! \Omega
-            WRITE(75,171)time,(ooi(k),k=2,N_ini)  ! \omega
-            spa=sqrt(cDOt(spin,spin))
-            IF(sp0.EQ.0.)sp0=spa
-            dsp=spa-sp0
-            WRITE(76,*)time,spin,dsp ! spin(k), k=1,3 of M1  (|spin|<1)
-171         FORMAT(1x,f12.3,201g18.10)
+C        DO I=1,NA
+C            VBH = SQRT(VA(3*I-2)**2+XA(3*I-1)**2
+C     &                   +XA(3*I)**2+4.0*RS*RS)
+C            RGAL = SQRT(XA(3*I-2)**2+XA(3*I-1)**2
+C     &                   +XA(3*I)**2+4.0*RS*RS)
+C            EPOT = ...
+C            EA(I) = 0.5*MA(I)*VBH**2+EPOT
+C        END DO
+C YET, HAS TO BE WRITTEN!
 
-            NTIME = time/DTOUT*14.90763847+0.99999 !round up
-            NTIME = NTIME*DTOUT
-            WRITE(OUTTIME,233) NTIME
-233         FORMAT(I6.6)
-            OPEN(20, FILE=OUTNAME(1:LD)//'.'//OUTTIME, STATUS='REPLACE')
-            DO I=1,N_ini
-                WRITE(20,*) time*14.90763847,
-     &                 xwr(I),xwr(I+1),xwr(I+2),PROB_TD(I),PROB_TC(I)
-            END DO
-            NOUT = NOUT + 1
-            CLOSE(20)
-            CALL FLUSH(71)
-            CALL FLUSH(72)
-            CALL FLUSH(73)
-            CALL FLUSH(74)
-            CALL FLUSH(75)
-            CALL FLUSH(76)
-            CALL FLUSH(66)
 
-            IF(iwr.GT.1)CALL FIND BINARIES(time) ! this is usually unimportant
-        END IF ! iwr>-1
+C  short output to save space
+        WRITE(66,234) time*14.90763847,MCL,RPL,
+     &    (Ma(k), SQRT(XA(3*k-2)**2+XA(3*k-1)**2
+     &                   +XA(3*k)**2), k=1,na)
+
+C  diagnostic output
+C        WRITE(66,234) time*14.90763847,MCL,RPL,
+C     &    (Ma(k), xa(3*k-2),xa(3*k-1),xa(3*k),
+C     &     va(3*k-2)/14.90763847,va(3*k-1)/14.90763847,
+C     &     va(3*k)/14.90763847, PROB_TC(k), k=1,na)
+C
+C        NTIME = time/DTOUT*14.90763847+0.99999 !round up
+C        NTIME = NTIME*DTOUT
+C        WRITE(OUTTIME,233) NTIME
+C233        FORMAT(I6.6)
+C        OPEN(20, FILE=OUTNAME(1:LD)//'.'//OUTTIME, STATUS='REPLACE')
+C        DO I=1,NA
+C            WRITE(20,*) ma(I),
+C     &           xa(3*I-2), xa(3*I-1),xa(3*I),va(3*I-2)
+C     &           /14.90763847, va(3*I-1)/14.90763847,
+C     &           va(3*I)/14.90763847
+C        END DO
+C        NOUT = NOUT + 1
+C        CLOSE(20)
+        CALL FLUSH(66)
 
 234     FORMAT(1x,f18.6,1p,600g13.5)
-        rs=(m(1)+m(2))*2/clight**2
 
         IF(TIME.LT.TMAX)THEN
             GOTO 100
@@ -235,23 +275,22 @@ c       Orbital elements with respect to the central body.
 
 
         SUBROUTINE CHAINEVOLVE
-     &  (NN,XX,VX,MX,TIME,DELTAT,TOL,NEWREG,KSMX,soft,cmet,cl,Ixc,NBH,
-     &   spini,CMXX,CMVX,PROB_TD,PROB_TC,dPROB_TD,dPROB_TC)
+     &  (TIME,DELTAT,TOL,NEWREG,KSMX,soft,cmet,cl,Ixc,NBH,
+     &   spini,PROB_TC,dPROB_TC)
 
         INCLUDE 'archain.h'
         COMMON/collision/icollision,ione,itwo,iwarning
-        COMMON/outputindex/index4output(200),N_ini
-        REAL*8 XX(*),VX(*),MX(*),cmet(3),spini(3),CMXX(3),CMVX(3)
-        REAL*8 RGAL, VBH, VCIRC, VC2, SIGMA, VREL, GM, RJ
-        REAL*8 PROB_TD(NMX),PROB_TC(NMX),SCAP,R_T,LBD
+        COMMON/outputindex/index4output(200)
+        REAL*8 cmet(3),spini(3)
+        REAL*8 RGAL, RHO, SIGMA
+        REAL*8 PROB_TC(NMX),SCAP,R_T,LBD
         LOGICAL newreg
-        REAL*8 PI, MSTAR, RSTAR, TIME1, TIME2, DELT
-        REAL*8 dPROB_TD(NMX), dPROB_TC(NMX), dPROB
+        REAL*8 RSTAR, TIME1, TIME2, DELT
+        REAL*8 dPROB_TC(NMX), dPROB
         SAVE
 
-        PI = 3.141592653589793
-        MSTAR = 1.0                 !mean stellar mass in Msun
         RSTAR = 1.0*2.25669073e-8   !stellar radius in pc
+        RSTAR = RSTAR*(MSTAR)**0.8  !scale according to R/Rsun = (M/Msun)^0.8
 
         tnext0=time+deltat
         wknx=tnext0/deltat
@@ -262,39 +301,156 @@ c       Orbital elements with respect to the central body.
 
  10     CONTINUE
 
+
+        DO I=1,N
+            J = index4output(I)
+            L=3*(J-1)
+            K=3*(I-1)
+            M(I)=MA(J)
+            X(K+1) = XA(L+1)-CMXA(1)
+            X(K+2) = XA(L+2)-CMXA(2)
+            X(K+3) = XA(L+3)-CMXA(3)
+            V(K+1) = VA(L+1)-CMVA(1)
+            V(K+2) = VA(L+2)-CMVA(2)
+            V(K+3) = VA(L+3)-CMVA(3)
+        END DO
+
+
+c       Put into center-of-mass frame
+        CALL Reduce2cm(x,m,N,cmxx)
+        CALL Reduce2cm(v,m,N,cmvx)
+
         TIME1 = TIME
         CALL  ARC
-     &  (NN,XX,VX,MX,TIME,tstep,TOL,NEWREG,KSMX,soft,cmet,cl,Ixc,NBH,
-     &   spini,
-     &   CMXX,CMVX,PROB_TD,PROB_TC)
+     &  (TIME,tstep,TOL,NEWREG,KSMX,soft,cmet,cl,Ixc,NBH,
+     &   spini)
+
         TIME2 = TIME
         DELT = TIME2-TIME1
 
-        IF (step.GT.0.) step_now = step     ! SAVE step
+C       Check for collisions and merge particles
+ 11     IF (icollision.NE.0) THEN ! handle a collison
+                nmerger = nmerger + 1
+                CALL  Merge_i1_i2(time)   ! merge the two particles
+        ENDIF
 
-        IF (icollision.NE.0) THEN ! handle a collison
-            nmerger = nmerger + 1
-            CALL  Merge_i1_i2(time)   ! merge the two particles
-            newreg=.TRUE.       ! chain has changed
-            NN=N                ! copy new chain
-            DO i=1,NN
-                MX(i)=M(i)
-                DO k=1,3
-                    xx(3*i-3+k)=x(3*i-3+k)
-                    vx(3*i-3+k)=v(3*i-3+k)
-                END DO
-            END DO               ! DOne copying new chain
+        CALL COLLISIONCHECK()
+        IF (icollision.NE.0) GOTO 11
 
-            tstep=tnext-time    ! set time step to CONTINUE
-                                ! chain integration
-            IF ((abs(tstep).GT.1.e-6*deltat).AND.(NN.GT.1)) GOTO 10
-         ENDIF
+        DO J=1,N
+            I = index4output(J)
+            L=3*(I-1)
+            K=3*(J-1)
+            MA(I)=M(J)
+            XA(L+1) = X(K+1)+CMXX(1)+CMXA(1)
+            XA(L+2) = X(K+2)+CMXX(2)+CMXA(2)
+            XA(L+3) = X(K+3)+CMXX(3)+CMXA(3)
+            VA(L+1) = V(K+1)+CMVX(1)+CMVA(1)
+            VA(L+2) = V(K+2)+CMVX(2)+CMVA(2)
+            VA(L+3) = V(K+3)+CMVX(3)+CMVA(3)
+         END DO
 
-         step=step_now          ! restore the earlier step 
+C       ENCOUNTER PROBABILITY COMPUTATION FOR TIDAL MASS GAIN
+        DO J = 1,N
+            I = index4output(J)
+            RS=2.d0*MA(I)/Clight**2 !Softening of order 4xSchwarzschild radius
+            RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1))**2
+     &                   +(XA(3*I))**2+4.0*RS*RS)
+
+
+            RHO = GALRHO(RGAL)
+            SIGMA = GALSIG(RGAL)
+
+C           Tidal disruption
+            R_T = RSTAR*(MA(I)/MSTAR)**0.3333333
+            LBD = 10.0**0.11*(2.0*MSTAR/(RSTAR*SIGMA*SIGMA))**0.0899
+            R_TC = LBD*R_T   !Tidal capture radius
+            SCAP = PI*R_TC*R_TC*(1.0+2.0*(MA(I)+
+     &           MSTAR)/(R_TC*SIGMA*SIGMA)) !capture cross section
+            dPROB = RHO/MSTAR*SCAP*SIGMA*DELT
+            PROB_TC(I) = PROB_TC(I) + dPROB
+            dPROB_TC(I) = dPROB_TC(I) + dPROB
+
+C           Handle escape of particles -- set escape radius here!
+            IF (RGAL.gt.1000.0) THEN
+                CALL ESCAPE(J)
+            END IF
+
+         END DO
+
+C       Repeat copying array in case a particle escaped (unnecessary?)
+        DO J=1,N
+            I = index4output(J)
+            L=3*(I-1)
+            K=3*(J-1)
+            MA(I)=M(J)
+            XA(L+1) = X(K+1)+CMXX(1)+CMXA(1)
+            XA(L+2) = X(K+2)+CMXX(2)+CMXA(2)
+            XA(L+3) = X(K+3)+CMXX(3)+CMXA(3)
+            VA(L+1) = V(K+1)+CMVX(1)+CMVA(1)
+            VA(L+2) = V(K+2)+CMVX(2)+CMVA(2)
+            VA(L+3) = V(K+3)+CMVX(3)+CMVA(3)
+         END DO
+
+
+
 
          RETURN
          END
 
+
+
+************************************************************
+************************************************************
+
+C       Check for collisions between all particles
+
+        SUBROUTINE COLLISIONCHECK()
+
+        INCLUDE 'archain.h'
+        COMMON/collision/icollision,ione,itwo,iwarning
+        REAL*8 dx(3), Cl
+        SAVE
+
+        Cl=Clight! SPEED OF LIGHT
+        DO I=1,N
+            I3=3*I
+            I2=I3-1
+            I1=I3-2
+            DO  J=I+1,N
+                IF(min(i,j).le.NofBH)THEN  ! only BH - BH, max->min => BH*
+                J3=3*J
+                J2=J3-1
+                J1=J3-2
+                dx(1)=X(J1)-X(I1)
+                dx(2)=X(J2)-X(I2)
+                dx(3)=X(J3)-X(I3)
+                RS=2.d0*(m(i)+m(j))/CL**2
+                RIJ2=dx(1)**2+dx(2)**2+dx(3)**2
+                rij=sqrt(rij2)
+                test= 10000.0*RS!4*RS !Collision Criterium
+                IF(rij.LT.test.AND.iwarning.LT.2)
+     &  WRITE(6,*)' Near collision: r/RS',rij/RS,i,j,m(i),m(j)
+     &  ,sqrt(vij2)/cl
+                IF(rij.LT.test)THEN
+                    iwarning=iwarning+1
+                    icollision=1   ! collision indicator
+                    IF (M(i).GE.M(j)) THEN
+                        ione=i
+                        itwo=j
+                    ELSE
+                        ione=j
+                        itwo=i
+                    END IF
+                    RETURN
+                END IF
+                END IF
+            END DO
+        END DO
+
+        RETURN
+
+        END
 
 ************************************************************
 ************************************************************
@@ -305,9 +461,10 @@ C           Handle mergers of two particles - include kicks here!
 
             INCLUDE 'archain.h'
             REAL*8 SM(NMX),XR(NMX3),XDR(NMX3),xwr(nmx3),ywr(nmx3)
-            REAL*8 XKICK(3)
+            REAL*8 XKICK(3), VBH1(3), VBH2(3), MBH1, MBH2
             COMMON/collision/icollision,Ione,Itwo,iwarning
-            COMMON/outputindex/index4output(200),N_ini
+            COMMON/outputindex/index4output(200)
+
             SAVE
 
             L=0
@@ -320,6 +477,17 @@ C           Handle mergers of two particles - include kicks here!
                 END DO
             END DO
 
+C           ADD KICK to Ione
+            MBH1 = M(Ione)
+            MBH2 = M(Itwo)
+            VBH1(1) = V(3*Ione-2)
+            VBH1(2) = V(3*Ione-1)
+            VBH1(3) = V(3*Ione)
+            VBH2(1) = V(3*Itwo-2)
+            VBH2(2) = V(3*Itwo-1)
+            VBH2(3) = V(3*Itwo)
+            CALL RECOIL(XKICK, MBH1, MBH2, VBH1, VBH2)
+
             Myks=M(ione)
             Mkax=M(itwo)
             SM(Ione)=M(Ione)+M(Itwo)
@@ -328,18 +496,14 @@ C           Handle mergers of two particles - include kicks here!
      &          +M(Itwo)*X((Itwo-1)*3+K))/SM(Ione)
                 XDR(3*Ione-3+K)=(M(Ione)*V((Ione-1)*3+K)
      &          +M(Itwo)*V((Itwo-1)*3+K))/SM(Ione)
+     &          +XKICK(K)
 6           CONTINUE
-
-C           ADD KICK to Ione HERE
-            XKICK(1) = 50.0*rand()
-            XKICK(2) = 50.0*rand()
-            XKICK(3) = 50.0*rand()
 
             DO I=Ione+1,Itwo-1
                 sm(i)=m(i)
                 DO k=1,3
                     XR(3*I-3+K)=X(3*I-3+k)
-                    XDR(3*I-3+K)=V(3*I-3+k)+XKICK(k)
+                    XDR(3*I-3+K)=V(3*I-3+k)
                 END DO
             END DO
           
@@ -382,10 +546,69 @@ c         New value of the number of bodies.
             ione=0
             itwo=0
 
-            IF(N.EQ.1)THEN! N.EQ.1!!!!!!!!!!!
-                WRITE(6,*)' Only one body left!'
-                STOP
-            END IF
+C            IF(N.EQ.1)THEN! N.EQ.1!!!!!!!!!!!
+C                WRITE(6,*)' Only one body left!'
+C                STOP
+C            END IF
+
+            RETURN
+            END
+
+
+************************************************************
+************************************************************
+
+C           Handle escape of particle
+
+            SUBROUTINE ESCAPE(Ione)
+
+            INCLUDE 'archain.h'
+            REAL*8 SM(NMX),XR(NMX3),XDR(NMX3)
+            COMMON/outputindex/index4output(200)
+
+            SAVE
+
+            WRITE(6,*)' Masses initially:',(M(k),k=1,N)
+            DO I=1,ione-1
+                SM(I)=M(I)
+                DO  K=1,3
+                    XR(3*I-3+K)=X(3*I-3+K)
+                    XDR(3*I-3+K)=V(3*I-3+K)
+                END DO
+            END DO
+
+            DO I=Ione+1,N
+                sm(i-1)=m(i)
+                DO k=1,3
+                    XR(3*I-6+K)=X(3*I-3+k)
+                    XDR(3*I-6+K)=V(3*I-3+k)
+                END DO
+            END DO
+          
+            DO i=Ione,N-1
+                index4output(i)=index4output(i+1)
+            END  DO
+
+c         New value of the number of bodies.
+            N=N-1
+            IF(Ione.le.NofBH) NofBH=NofBH-1 ! # of BH's reduced!
+
+
+            DO 8 I=1,N
+                M(I)=SM(I)
+                DO 7 K=1,3
+                    X(3*i-3+k)=XR(3*i-3+k)
+                    V(3*i-3+k)=XDR(3*i-3+k)
+7               CONTINUE
+8           CONTINUE
+
+            WRITE(6,*)' Escape:',ione,' N, NBH=',N,NofBH
+     &     ,' masses ',(M(k),k=1,N)
+
+C            IF(N.EQ.1)THEN! N.EQ.1!!!!!!!!!!!
+C                WRITE(6,*)' Only one body left!'
+C                STOP
+C            END IF
 
             RETURN
             END
@@ -393,17 +616,198 @@ c         New value of the number of bodies.
 
 
 
+************************************************************
+************************************************************
+
+
+
+        SUBROUTINE RECOIL(VKICK, MBH1, MBH2, VBH1, VBH2)
+
+        INCLUDE 'archain.h'
+        REAL*8 MBH1, MBH2, Q12, ETAQ
+        REAL*8 VBH1(3), VBH2(3), E1(3), E2(3), NORM(3)
+        REAL*8 VBHABS1, VBHABS2, NORMABS
+        REAL*8 AMC, BMC, HC, XIC, VC11, VAC, VBC, VCC
+        REAL*8 VMASS, VPERP, VPAR
+        REAL*8 ALPHA1(3), ALPHA2(3), SBH1(3), SBH2(3)
+        REAL*8 SABSBH1, SABSBH2, ARAND1, ARAND2
+        REAL*8 INVEC(3), INVECABS, DELTAVEC(3), DELTAVECABS
+        REAL*8 PHIDELTA, STILDE(3), ALPHAPERP
+        REAL*8 VKICK(3)
+        REAL*8 GAUSS
+
+C       NUMERICAL COEFFICIENTS
+        AMC = 1.2e4        !km/s
+        BMC = -0.93
+        HC = 6.9e3         !km/s
+        XIC = 2.5307274154 !145.0 deg in rad
+        VC11 = 3677.76     !km/s
+        VAC = 2481.21      !km/s
+        VBC = 1792.45      !km/s
+        VCC = 1506.52      !km/s
+
+C       INPUT PARAMETERS
+C        MBH1 = RAND(0)*1.e8
+C        MBH2 = RAND(0)*1.e8
+C        CALL GETGAUSS(GAUSS)
+C        VBH1(1) = GAUSS*1000.0
+C        CALL GETGAUSS(GAUSS)
+C        VBH1(2) = GAUSS*1000.0
+C        CALL GETGAUSS(GAUSS)
+C        VBH1(3) = GAUSS*1000.0
+C        CALL GETGAUSS(GAUSS)
+C        VBH2(1) = GAUSS*1000.0
+C        CALL GETGAUSS(GAUSS)
+C        VBH2(2) = GAUSS*1000.0
+C        CALL GETGAUSS(GAUSS)
+C        VBH2(3) = GAUSS*1000.0
+
+        CALL GETGAUSS(GAUSS)
+        SBH1(1) = GAUSS !E1 spin component -> S = a*G*MBH**2/c with a E {0,1}
+        CALL GETGAUSS(GAUSS)
+        SBH1(2) = GAUSS !E2 spin component
+        CALL GETGAUSS(GAUSS)
+        SBH1(3) = GAUSS !NORM spin component
+        SABSBH1 = sqrt(SBH1(1)**2+SBH1(2)**2+SBH1(3)**2)
+        ARAND1 = RAND(0)
+
+        SBH1(1) = ARAND1*MBH1**2/Clight*SBH1(1)/SABSBH1
+        SBH1(2) = ARAND1*MBH1**2/Clight*SBH1(2)/SABSBH1
+        SBH1(3) = ARAND1*MBH1**2/Clight*SBH1(3)/SABSBH1
+
+        CALL GETGAUSS(GAUSS)
+        SBH2(1) = GAUSS !E1 spin component
+        CALL GETGAUSS(GAUSS)
+        SBH2(2) = GAUSS !E2 spin component
+        CALL GETGAUSS(GAUSS)
+        SBH2(3) = GAUSS !NORM spin component
+        SABSBH2 = sqrt(SBH2(1)**2+SBH2(2)**2+SBH2(3)**2)
+        ARAND2 = RAND(0)
+
+        SBH2(1) = ARAND2*MBH2**2/Clight*SBH2(1)/SABSBH2
+        SBH2(2) = ARAND2*MBH2**2/Clight*SBH2(2)/SABSBH2
+        SBH2(3) = ARAND2*MBH2**2/Clight*SBH2(3)/SABSBH2
+
+        CALL GETGAUSS(GAUSS)
+        INVEC(1) = GAUSS  !arbitrary infall vector
+        CALL GETGAUSS(GAUSS)
+        INVEC(2) = GAUSS
+        CALL GETGAUSS(GAUSS)
+        INVEC(3) = GAUSS
+        INVECABS = sqrt(INVEC(1)**2+INVEC(2)**2+INVEC(3)**2)
+
+C       MASS RATIO
+        Q12 = MBH1/MBH2
+        ETAQ = Q12/(1.0+Q12)**2
+
+C       CONSTRUCT UNIT VECTORS
+        VBHABS1 = sqrt(VBH1(1)**2+VBH1(2)**2+VBH1(3)**2)
+        VBHABS2 = sqrt(VBH2(1)**2+VBH2(2)**2+VBH2(3)**2)
+
+C       USE VBH1 AS FIRST UNIT VECTOR IN ORBITAL PLANE
+        E1(1) = VBH1(1)/VBHABS1
+        E1(2) = VBH1(2)/VBHABS1
+        E1(3) = VBH1(3)/VBHABS1
+
+C       CONSTRUCT NORMAL VECTOR
+        NORM(1) = VBH1(2)*VBH2(3)-VBH1(3)*VBH2(2)
+        NORM(2) = VBH1(3)*VBH2(1)-VBH1(1)*VBH2(3)
+        NORM(3) = VBH1(1)*VBH2(2)-VBH1(2)*VBH2(1)
+        NORMABS = sqrt(NORM(1)**2+NORM(2)**2+NORM(3)**2)
+        NORM(1) = NORM(1)/NORMABS
+        NORM(2) = NORM(2)/NORMABS
+        NORM(3) = NORM(3)/NORMABS
+
+C       SECOND UNIT VECTOR IN ORBITAL PLANE
+        E2(1) = NORM(2)*E1(3)-NORM(3)*E1(2)
+        E2(2) = NORM(3)*E1(1)-NORM(1)*E1(3)
+        E2(3) = NORM(1)*E1(2)-NORM(2)*E1(1)
+
+C        WRITE(*,*) "  E1: ", E1(1), E1(2), E1(3)
+C        WRITE(*,*) "  E2: ", E2(1), E2(2), E2(3)
+C        WRITE(*,*) "NORM: ", NORM(1), NORM(2), NORM(3)
+
+
+C       FIRST KICK COMPONENT
+        VMASS = AMC*ETAQ**2*(1.0-Q12)/(1.0+Q12)*(1.0+BMC*ETAQ)
+C        WRITE(*,*) "VMASS: ", VMASS
+
+
+C       DIMENSIONLESS SPINS
+        ALPHA1(1) = Clight*SBH1(1)/MBH1**2
+        ALPHA1(2) = Clight*SBH1(2)/MBH1**2
+        ALPHA1(3) = Clight*SBH1(3)/MBH1**2
+        ALPHA2(1) = Clight*SBH2(1)/MBH2**2
+        ALPHA2(2) = Clight*SBH2(2)/MBH2**2
+        ALPHA2(3) = Clight*SBH2(3)/MBH2**2
+
+
+C       SECOND KICK COMPONENT
+        VPERP = HC*ETAQ**2/(1.0+Q12)*(ALPHA2(3)-Q12*ALPHA1(3))
+C        WRITE(*,*) "VPERP: ", VPERP
+
+
+C       CONSTRUCT IN-PLANE COMPONENT
+        DELTAVEC(1) = (MBH1+MBH2)*(SBH2(1)/MBH2-SBH1(1)/MBH1)
+        DELTAVEC(2) = (MBH1+MBH2)*(SBH2(2)/MBH2-SBH1(2)/MBH1)
+        DELTAVEC(3) = 0.0
+        DELTAVECABS = sqrt(DELTAVEC(1)**2+DELTAVEC(2)**2)
+
+C       ANGLE BETWEEN INFALL VECTOR AND IN-PLANE COMPONENT
+        PHIDELTA = (DELTAVEC(1)*INVEC(1)+DELTAVEC(2)*INVEC(2)+
+     &              DELTAVEC(3)*INVEC(3))/(DELTAVECABS*INVECABS)
+        PHIDELTA = ACOS(PHIDELTA)
+
+        STILDE(1) = 2.0*(ALPHA2(1)+Q12*ALPHA1(1))/(1.0+Q12)**2
+        STILDE(2) = 2.0*(ALPHA2(2)+Q12*ALPHA1(2))/(1.0+Q12)**2
+        STILDE(3) = 2.0*(ALPHA2(3)+Q12*ALPHA1(3))/(1.0+Q12)**2
+
+        ALPHAPERP = sqrt((ALPHA2(1)-Q12*ALPHA1(1))**2+
+     &                   (ALPHA2(2)-Q12*ALPHA1(2))**2)
+
+
+C       THIRD KICK COMPONENT
+        VPAR = 16.0*ETAQ**2/(1.0+Q12)*(VC11+VAC*STILDE(3)+
+     &         VBC*STILDE(3)**2+VCC*STILDE(3)**3)*
+     &         ALPHAPERP*cos(PHIDELTA)
+C        WRITE(*,*) "VPAR: ", VPAR
+
+
+        VKICK(1) = VMASS*E1(1)+VPERP*(cos(XIC)*E1(1)+sin(XIC)*E2(1))
+     &             +VPAR*NORM(1)
+        VKICK(2) = VMASS*E1(2)+VPERP*(cos(XIC)*E1(2)+sin(XIC)*E2(2))
+     &             +VPAR*NORM(2)
+        VKICK(3) = VMASS*E1(3)+VPERP*(cos(XIC)*E1(3)+sin(XIC)*E2(3))
+     &             +VPAR*NORM(3)
+
+
+        WRITE(*,*) MBH1, VBH1(1)/14.90763847, VBH1(2)/14.90763847
+     &           , VBH1(3)/14.90763847, SBH1(1), SBH1(2), SBH1(3)
+     &           , MBH2, VBH2(1)/14.90763847
+     &           , VBH2(2)/14.90763847, VBH2(3)/14.90763847
+     &           , SBH2(1), SBH2(2), SBH2(3), VKICK(1)/14.90763847
+     &           , VKICK(2)/14.90763847, VKICK(3)/14.90763847
+     &           , VMASS/14.90763847, VPERP/14.90763847
+     &           , VPAR/14.90763847
+
+        RETURN
+
+        END
+
+
 
 ************************************************************
 ************************************************************
+
 
 
 
         SUBROUTINE COORDINATE DEPENDENT PERTURBATIONS(ACC) ! USER DEFINED
 
         INCLUDE 'archain.h'
-        REAL*8 ACC(NMX3)
-        REAL*8 RGAL, ACCEL, RS
+        COMMON/galaxy/MCL,RPL
+        REAL*8 ACC(*)
+        REAL*8 RGAL2, ACCEL
         SAVE
 
 C       Physical positions and velocities (in the inertial coordinate)
@@ -415,15 +819,16 @@ C       are assumed to be in the vector ACC.
 
 C---  init acc
         DO  I=1,N
-            RS=2.d0*(M(I))/Clight**2 !Softening of order 4xSchwarzschild radius
-            RGAL = SQRT((X(3*I-2)+CMX(1))**2+(X(3*I-1)+CMX(2))**2
-     &                   +(X(3*I)+CMX(3))**2+4.0*RS*RS)
+            RGAL2 = (X(3*I-2)+CMX(1)+CMXA(1))**2+(X(3*I-1)
+     &           +CMX(2)+CMXA(2))**2+(X(3*I)+CMX(3)
+     &           +CMXA(3))**2+RPL*RPL
 
-            ACCEL = GMASS(RGAL)/RGAL**3
+            ACCEL = 1.0d0*MCL/RGAL2**1.5
 
-            ACC(3*I-2) = -ACCEL*(X(3*I-2)+CMX(1))
-            ACC(3*I-1) = -ACCEL*(X(3*I-1)+CMX(2))
-            ACC(3*I)   = -ACCEL*(X(3*I)+CMX(3))
+            ACC(3*I-2) = -ACCEL*(X(3*I-2)+CMX(1)+CMXA(1))
+            ACC(3*I-1) = -ACCEL*(X(3*I-1)+CMX(2)+CMXA(2))
+            ACC(3*I)   = -ACCEL*(X(3*I)+CMX(3)+CMXA(3))
+
         END DO
 
         RETURN
@@ -438,19 +843,17 @@ C---  init acc
 
 
         SUBROUTINE Velocity Dependent Perturbations
-     &   (dT,Va,spina,acc,dcmv,df,dfGR,dspin)
+     &   (dT,Vap,spina,acc,dcmv,df,dfGR,dspin)
 
         INCLUDE 'archain.h'
-        REAL*8 df(*),Va(*),dcmv(3),dfGR(*),dfR(nmx3),acc(nmx3)
+        REAL*8 df(*),Vap(*),dcmv(3),dfGR(*),dfR(nmx3),acc(nmx3)
         REAL*8 dspin(3),spina(3)
-        REAL*8 RGAL, ACCEL, RS, VBH, VCIRC, VC2, RHO, GM, RJ, FGAL
-        REAL*8 CHI,SIGMA,GAMMAC,BRACKETP,LAMBDA
 
         SAVE
 
-
-        IF(Clight.ne.0.0)THEN ! INCLUDE only IF Clight set >0
-            CALL Relativistic ACCELERATIONS(dfr,dfGR,Va,spina,dspin)
+C       Relativistic accelerations
+        IF(clightpn.ne.0.0)THEN ! INCLUDE only IF Clightpn set >0 in find chain indices
+            CALL Relativistic ACCELERATIONS(dfr,dfGR,Vap,spina,dspin)
         ELSE
             DO i=1,3*n
                 dfr(i)=0
@@ -461,69 +864,10 @@ C---  init acc
             END DO
         END IF
 
-        DO i=1,N
-C           Get dynamical friction assuming velocity isotropy
-            RS=2.d0*(M(I))/Clight**2 !Softening of order 2xSchwarzschild radius
-            RGAL = SQRT((X(3*I-2)+CMX(1))**2+(X(3*I-1)+CMX(2))**2
-     &                   +(X(3*I)+CMX(3))**2+4.0*RS*RS)
-            VBH = SQRT((V(3*I-2)+CMV(1))**2+(V(3*I-1)+CMV(2))**2
-     &                   +(V(3*I)+CMV(3))**2)
-
-C           density at RGAL
-            RHO = RHOGAL(RGAL)
-
-            GM = GMASS(RGAL)
-
-C           add contribution of SMBHs to mass(R) here?
-            DO J=1,N
-                RJ = SQRT((X(3*J-2)+CMX(1))**2+(X(3*J-1)+CMX(2))**2
-     &                  +(X(3*J)+CMX(3))**2)
-                IF (RJ.LE.RGAL) THEN
-                    GM = GM + M(J)
-                END IF
-            END DO
-
-
-            VCIRC = sqrt(GM/RGAL)
-
-            VC2 = VCIRC*VCIRC
-
-C           or add contribution of SMBHs to vcirc here?
-C            DO J=1,N
-C                IF (J.NE.I) THEN
-C                  VC2 = VC2 + M(J)/SQRT((X(3*J-2)-X(3*I-2))**2
-C     &             +(X(3*J-1)-X(3*I-1))**2 + (X(3*J)-X(3*I))**2)
-C                END IF
-C            END DO
-
-C           velocity dispersion at RGAL
-            SIGMA = SIGMA_cor(RGAL) !sqrt(VC2/2.0)
-
-            CHI = VBH/(1.414213562*SIGMA)
-            LAMBDA = LOG(RGAL*SIGMA*SIGMA/(M(I)))
-
-            IF (LAMBDA.LT.0.0) LAMBDA = 0.0
-
-            IF (VBH.GT.1.) THEN
-                GAMMAC = 12.566370616*LAMBDA*M(I)*RHO/VBH**3
-            ELSE
-                GAMMAC = 12.566370616*LAMBDA*M(I)*RHO  !TINY SMOOTHING OF 0.06559 KM/S
-            ENDIF
-
-            BRACKETP = ERF(CHI) - 2.0*CHI/1.772453851*EXP(-CHI*CHI)
-
-C           dynamical friction force
-            FDF = GAMMAC*BRACKETP
-
-C           Safety measure
-            FGAL = SQRT(ACC(3*I-2)*ACC(3*I-2)+ACC(3*I-1)*ACC(3*I-2)
-     &              +ACC(3*I)*ACC(3*I))
-            IF (FDF.GT.FGAL) THEN FDF = FGAL
-
-            DF(3*I-2)=ACC(3*I-2)+DFR(3*I-2)-FDF*(V(3*I-2)+CMV(1))
-            DF(3*I-1)=ACC(3*I-1)+DFR(3*I-1)-FDF*(V(3*I-1)+CMV(2))
-            DF(3*I)=ACC(3*I)+DFR(3*I)-FDF*(V(3*I)+CMV(3))
-
+        DO i=1,n
+            DF(3*I-2)=ACC(3*I-2) + DFR(3*I-2)
+            DF(3*I-1)=ACC(3*I-1) + DFR(3*I-1)
+            DF(3*I)=ACC(3*I) + DFR(3*I)
         END DO
         CALL reduce 2 cm(df,m,n,dcmv)
 
@@ -539,57 +883,156 @@ C           Safety measure
 
 
 
-        FUNCTION GMASS(R)
+        SUBROUTINE DIFFUSION(DT)
+*
+*
+*       Dynamical friction & phase-space diffusion.
+*       -------------------------------------------
+*
+C       Calculate diffusion coefficients assuming velocity isotropy
 
-        IMPLICIT REAL*8 (A-H,M,O-Z)
-        COMMON/galaxy/rho0,eta1,eta2,eta3,re1,re2,re3
-        REAL*8 R, GMASS
-        REAL*8 rho1, rho2, rho3, M_center, M_core, M_halo
-        REAL*8 PI
-        REAL*8 MCL, RPL
-        MCL = 1.e6
-        RPL = 1.0
-        PI = 3.141592653589793
+        INCLUDE 'archain.h'
+        COMMON/galaxy/MCL,RPL
+        COMMON/outputindex/index4output(200)
+        REAL*8 ERF_NR, ERF_TEMP, FP, FBOT
+        REAL*8 DVP, DVP2, DVBOT2, GAUSS
+        REAL*8 DELTAW, DELTAE, DELTAV, DT
+        REAL*8 vxp, vyp, vzp, vp, x1, y1, z1
 
-        GMASS = MCL*((R/RPL)**3)*((1.0+(R/RPL)**2)**(-1.5))
+        REAL*8 vx, vy, vz, DV(3), VBH, VBH2
+        REAL*8 GALRH, GMASS, RHO, SIGMA, RS, RGAL
+        REAL*8 CHI, CLAMBDA, GAMMAC, FCHI
+
+        SAVE
+
+        DELTAW = 0.0
+        GALRH = 1.305*RPL
+
+        DO J=1,N
+            I = index4output(J)
+            RS=2.d0*(MA(I))/Clight**2 !Softening of order 2xSchwarzschild radius
+            RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1)
+     &             )**2+(XA(3*I))**2+4.0*RS*RS)
+
+            GMASS = GALMASS(RGAL)
+            RHO = GALRHO(RGAL)
+            SIGMA = GALSIG(RGAL)
+
+            vx = VA(3*I-2)
+            vy = VA(3*I-1)
+            vz = VA(3*I)
+
+
+C           velocity of black hole + velocity dispersion to get mean encounter velocity
+            VBH = SQRT(vx**2+vy**2+vz**2) !+SIGMA**2)
+
+C            WRITE(*,*) sqrt(VX*VX+VY*VY+VZ*VZ)/14.90763847,
+C     &      sqrt(V(3*I-2)*V(3*I-2)+V(3*I-1)*V(3*I-1)+V(3*I)*V(3*I))
+C     &      /14.90763847,sqrt(CMV(1)*CMV(1)+CMV(2)*CMV(2)+CMV(3)*CMV(3))
+C     &      /14.90763847, VBH/14.90763847
+
+            CHI = VBH/(1.414213562*SIGMA)
+
+            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
+            IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
+
+            ERF_TEMP = ERF_NR(CHI)
+            FCHI = ERF_TEMP - 2.0*CHI/1.772453851*EXP(-CHI*CHI)
+            FCHI = 0.5*FCHI*CHI**(-2)
+
+            IF (SIGMA.GT.0.0) THEN
+                GAMMAC = 4.0*PI*CLAMBDA*RHO/SIGMA
+                DVP = -GAMMAC*FCHI/SIGMA*(MA(I)+MSTAR)
+                DVP2 = SQRT(2.0)*GAMMAC*FCHI/CHI*MSTAR
+                DVBOT2 = SQRT(2.0)*GAMMAC*(ERF_TEMP-FCHI)/CHI*MSTAR
+                CALL GETGAUSS(GAUSS)
+                FP = DVP*DT+GAUSS*SQRT(DVP2*DT)
+                CALL GETGAUSS(GAUSS)
+                FBOT = 0.0 + GAUSS*SQRT(DVBOT2*DT)
+            ELSE
+                GAMMAC = 0.0
+                DVP = 0.0
+                DVP2 = 1.e-6
+                DVBOT2 = 1.e-6
+                FP = 0.0
+                FBOT = 0.0
+            ENDIF
+
+C           draw random vector
+            x1 = rand(0)-0.5
+            y1 = rand(0)-0.5
+            z1 = rand(0)-0.5
+
+            vxp = y1*vz-z1*vy
+            vyp = z1*vx-x1*vz
+            vzp = x1*vy-y1*vx
+
+            vp = SQRT(vxp*vxp+vyp*vyp+vzp*vzp)
+
+C           unit vector perpendicular to direction of motion
+            vxp = vxp/vp
+            vyp = vyp/vp
+            vzp = vzp/vp
+*
+            VBH2 = vx**2+vy**2+vz**2
+            VBH = sqrt(VBH2)
+            DELTAE = 0.5*MA(I)*VBH2
+*
+
+            VX = VX + FP*VX/VBH + FBOT*vxp
+            VY = VY + FP*VY/VBH + FBOT*vyp
+            VZ = VZ + FP*VZ/VBH + FBOT*vzp
+*
+C           Calculate energy change and test for too large kicks
+            DELTAV = VBH - SQRT(VX**2+VY**2+VZ**2)
+            DELTAV = abs(DELTAV)/VBH
+*
+            if (DELTAV.le.1.0) then
+               VBH = SQRT(VX**2+VY**2+VZ**2)
+            else
+               WRITE(*,*) 'HUGE KICK:',RGAL,GMASS,RHO,
+     &               SIGMA/14.90763847,VBH/14.90763847
+     &              ,RGAL, GALRH, MCL, MA(I)
+               CALL GETGAUSS(GAUSS)
+               VX = VBH/SQRT(3.0)*GAUSS
+               CALL GETGAUSS(GAUSS)
+               VY = VBH/SQRT(3.0)*GAUSS
+               CALL GETGAUSS(GAUSS)
+               VZ = VBH/SQRT(3.0)*GAUSS
+               VBH = SQRT(VX**2+VY**2+VZ**2)
+            endif
+
+            DELTAE = DELTAE-0.5*MA(I)*VBH*VBH
+*
+            DELTAW = DELTAW + DELTAE !Sum up work done by diffusion
+*
+            VA(3*I-2) = VX
+            VA(3*I-1) = VY
+            VA(3*I) = VZ
+*
+        END DO
+
+C       Change scale radius of Plummer sphere based on energy change
+        DELTAW = -2.0*DELTAW
+        RPL = 1.0/(1.0/RPL+3.3953054526*DELTAW/(MCL*MCL))
 
         RETURN
 
-        rho1 = rho0*re1**(eta1)
-        rho2 = rho1*re2**(eta2-eta1)
-        rho3 = rho2*re3**(eta3-eta2)
+        END
 
-        M_center = 4.0/3.0*PI*rho0*re1**3
-        M_core = 4.0/(3.0-eta1)*PI*rho1*(re2**(3.0-eta1)
-     &          -re1**(3.0-eta1)) + M_center
-        M_halo = 4.0/(3.0-eta2)*PI*rho2*(re3**(3.0-eta2)
-     &          -re2**(3.0-eta2)) + M_core
+************************************************************
+************************************************************
 
-        IF (R.LT.re1) THEN
-            GMASS = 4.0/3.0*PI*rho0*R**3
-        ELSE IF (R.LT.re2) THEN
-            IF (eta1.NE.3) THEN
-                GMASS = M_center + 4.0/(3.0-eta1)*PI*rho1
-     &              *(R**(3.0-eta1)-re1**(3.0-eta1))
-            ELSE
-                GMASS = M_center + 4.0*PI*rho1*(log(R)-log(re1))
-            ENDIF
-        ELSE IF (R.LT.re3) THEN
-            IF (eta2.ne.3) THEN
-                GMASS = M_core + 4.0/(3.0-eta2)*PI*rho2
-     &              *(R**(3.0-eta2)-re2**(3.0-eta2))
-            ELSE
-                GMASS = M_core + 4.0*PI*rho2*(log(R)-log(re2))
-            ENDIF
-        ELSE
-            IF (eta3.ne.3) THEN
-                GMASS = M_halo + 4.0/(3.0-eta3)*PI*rho3
-     &              *(R**(3.0-eta3)-re3**(3.0-eta3))
-            ELSE
-                GMASS = M_halo + 4.0*PI*rho3*(log(R)-log(re3))
-            ENDIF
-        ENDIF
 
+
+        REAL*8 FUNCTION GALMASS(R)
+
+        IMPLICIT REAL*8 (A-H,M,O-Z)
+        PARAMETER (MSTAR=0.45, PI=3.141592653589793)
+        COMMON/galaxy/MCL,RPL
+        REAL*8 R
+
+        GALMASS=MCL*((R/RPL)**3)*((1.0+(R/RPL)**2)**(-1.5))
 
         RETURN
 
@@ -602,39 +1045,18 @@ C           Safety measure
 
 
 
-        FUNCTION RHOGAL(R)
+        REAL*8 FUNCTION GALRHO(R)
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
-        COMMON/galaxy/rho0,eta1,eta2,eta3,re1,re2,re3
-        REAL*8 R, RHOGAL
-        REAL*8 rho1, rho2, rho3, M_center, M_core, M_halo
-        REAL*8 PI
-        REAL*8 MCL, RPL
-        MCL = 1.e6
-        RPL = 1.0
-        PI = 3.141592653589793
+        PARAMETER (MSTAR=0.45, PI=3.141592653589793)
+        COMMON/galaxy/MCL,RPL
+        REAL*8 R
 
-        RHOGAL = 3.0/(4.0*PI*RPL**3)*MCL*
+        GALRHO = 3.0/(4.0*PI*RPL**3)*MCL*
      &      ((1.0+(R/RPL)**2)**(-2.5))
 
         RETURN
 
-        rho1 = rho0*re1**(eta1)
-        rho2 = rho1*re2**(eta2-eta1)
-        rho3 = rho2*re3**(eta3-eta2)
-
-        IF (R.LT.re1) THEN
-            RHOGAL = rho0
-        ELSE IF (R.LT.re2) THEN
-            RHOGAL = rho1*R**(-eta1)
-        ELSE IF (R.LT.re3) THEN
-            RHOGAL = rho2*R**(-eta2)
-        ELSE
-            RHOGAL = rho3*R**(-eta3)
-        ENDIF
-
-        RETURN
-
         END
 
 
@@ -642,24 +1064,16 @@ C           Safety measure
 ************************************************************
 
 
-        FUNCTION SIGMA_cor(R)
+        REAL*8 FUNCTION GALSIG(R)
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
-        COMMON/galaxy/rho0,eta1,eta2,eta3,re1,re2,re3
-        REAL*8 R, SIGMA_cor
-        REAL*8 rho1, rho2, rho3, M_center, M_core, M_halo
-        REAL*8 PI
-        REAL*8 MCL, RPL
-        MCL = 1.e6
-        RPL = 1.0
-        PI = 3.141592653589793
+        COMMON/galaxy/MCL,RPL
+        REAL*8 R
 
-        SIGMA_cor = MCL/(2.0*RPL)*
-     &      ((1.0+(R/RPL)**2)**(-0.5))
+        GALSIG = MCL/(2.0*RPL)*
+     &      (1.0+(R/RPL)**2)**(-0.5)
 
-        SIGMA_cor = sqrt(SIGMA_cor)
-
-        !CONTRIBUTION OF SMBH HAS TO BE ADDED HERE
+        GALSIG = sqrt(GALSIG/3.0)
 
         RETURN
 
@@ -671,14 +1085,14 @@ C           Safety measure
 
 
 
-        FUNCTION ERF(X)
-        REAL*8 ERF, X
+        REAL*8 FUNCTION ERF_NR(X)
+        REAL*8 X
         REAL*8 GAMMP
 
         IF (X.LT.0) THEN
-            ERF = -GAMMP(0.5d0, X**2)
+            ERF_NR = -GAMMP(0.5d0, X**2)
         ELSE
-            ERF = GAMMP(0.5d0, X**2)
+            ERF_NR = GAMMP(0.5d0, X**2)
         ENDIF
 
         RETURN
@@ -692,9 +1106,9 @@ C           Safety measure
 
 
 
-        FUNCTION GAMMP(A,X)
+        REAL*8 FUNCTION GAMMP(A,X)
 
-        REAL*8 A, GAMMP, X
+        REAL*8 A, X
 CU    USES gcf,gser
         REAL*8 gammcf,gamser,gln
 
@@ -756,26 +1170,26 @@ CU    USES gammln
 
 
 
-        FUNCTION gammln(xx)
+        REAL*8 FUNCTION gammln(xx)
 
-        REAL*8 gammln,xx
+        REAL*8 xx
         INTEGER j
-        DOUBLE PRECISION ser,stp,tmp,x,y,cof(6)
+        REAL*8 ser,stp,tmp,p,y,cof(6)
         SAVE cof,stp
         DATA cof,stp/76.18009172947146d0,-86.50532032941677d0,
      &  24.01409824083091d0,-1.231739572450155d0,.1208650973866179d-2,
      &  -.5395239384953d-5,2.5066282746310005d0/
 
-        x=xx
-        y=x
-        tmp=x+5.5d0
-        tmp=(x+0.5d0)*log(tmp)-tmp
+        p=xx
+        y=p
+        tmp=p+5.5d0
+        tmp=(p+0.5d0)*log(tmp)-tmp
         ser=1.000000000190015d0
         do 11 j=1,6
             y=y+1.d0
             ser=ser+cof(j)/y
   11    continue
-        gammln=tmp+log(stp*ser/x)
+        gammln=tmp+log(stp*ser/p)
 
         RETURN
 
@@ -788,17 +1202,17 @@ CU    USES gammln
 
 
 
-        SUBROUTINE gcf(gammcf,a,x,gln)
+        SUBROUTINE gcf(gammcf,a,p,gln)
 
         INTEGER ITMAX
-        REAL*8 a,gammcf,gln,x,EPS,FPMIN
+        REAL*8 a,gammcf,gln,p,EPS,FPMIN
         PARAMETER (ITMAX=100,EPS=3.e-7,FPMIN=1.e-30)
 CU    USES gammln
         INTEGER i
         REAL*8 an,b,c,d,del,h,gammln
 
         gln=gammln(a)
-        b=x+1.-a
+        b=p+1.-a
         c=1./FPMIN
         d=1./b
         h=d
@@ -815,13 +1229,38 @@ CU    USES gammln
             if(abs(del-1.).lt.EPS)goto 1
   11    continue
         STOP
-  1     gammcf=exp(-x+a*log(x)-gln)*h
+  1     gammcf=exp(-p+a*log(p)-gln)*h
 
         RETURN
 
         END
 
 
+
+
+************************************************************
+************************************************************
+
+
+
+        SUBROUTINE GETGAUSS(GAUSS)
+
+        REAL*8 GAUSS
+        REAL*8 XX, YY, QQ
+
+        QQ = 2.0
+
+        DO WHILE (QQ.GT.1.0)
+            XX = 2.0*RAND(0)-1.0
+            YY = 2.0*RAND(0)-1.0
+            QQ = XX*XX + YY*YY
+        END DO
+
+        GAUSS = SQRT(-2.0*LOG(QQ)/QQ)*XX
+
+        RETURN
+
+        END
 
 
 
@@ -845,9 +1284,8 @@ CU    USES gammln
 
 
         SUBROUTINE ARC
-     &  (NN,XX,VX,MX,TIME,DELTAT,TOL,NEWREG,KSMX,soft,cmet,cl,Ixc,NBH,
-     &   spini,
-     &   CMXX,CMVX,PROB_TD,PROB_TC)
+     &  (TIME,DELTAT,TOL,NEWREG,KSMX,soft,cmet,cl,Ixc,NBH,
+     &   spini)
 c        BETTER TO USE CM-coords & vels for XX & VX and CMXX CMVX
 c        FOR CM-position (needed in the Perturbations routine).
 c-----------------------------------------------------------------
@@ -879,8 +1317,8 @@ c        Ixc = 2 => exact time, =0 no exact time but RETURN after CHTIME>DELTAT 
         COMMON/collision/icollision,ione,itwo,iwarning
         COMMON/itemaxCOMMON/aitemax,itemax,itemax_used
         COMMON/turhia/rw,fr,frm,akiih(3)
-        REAL*8 G0(3),XX(*),VX(*),MX(*),cmet(3),spini(3),CMXX(3),CMVX(3)
-        REAL*8 PROB_TD(NMX),PROB_TC(NMX)
+        REAL*8 G0(3),XX(NMX3),VX(NMX3),MX(NMX),cmet(3),spini(3)
+        REAL*8 PROB_TC(NMX)
         REAL*8 Y(1500),SY(1500),Yold(1500)
         LOGICAL MUSTSWITCH,NEWREG
         DATA ntrue,nfalse,nwritten/3*0/
@@ -901,12 +1339,16 @@ c       Initial constants of motion
             WRITE(6,*)' NOT at every step!! (May reduce accuracy!!)'
             WRITE(6,*)' even IF it may look like the contrary.'
         END IF
-        IF(NN.GT.NMX)THEN
+        IF(N.GT.NMX)THEN
             WRITE(6,*)' THIS CODE CAN HANDLE ONLY ',NMX,' BODIES '
-            WRITE(6,*)' Yuo are trying to use N=',NN
+            WRITE(6,*)' Yuo are trying to use N=',N
             WRITE(6,*)' Try increasing NMX in archain.h '
             WRITE(6,*)' and increase some (large) dimensions ELSEwhere'
             WRITE(6,*)' in the same proportion.  STOPPING'
+            STOP
+        END IF
+        IF(N.LT.2)THEN
+            WRITE(6,*)' Only 1 body left '
             STOP
         END IF
 c           IF(cmet(1).EQ.0.0 .AND. cmet(2).ne.0.0)THEN
@@ -935,20 +1377,18 @@ c           END IF
         NofBH=NBH  ! - " -
            
         IF(NEWREG)THEN
-c           step=0
+C           step=0
             iwarning=0
             itemax=12
             itemax_used=0
             ee=soft**2  ! to COMMON
             DO k=1,3
-                spin(k)=spini(k) ! SPIN
+                spin(k)= spini(k) ! SPIN
                 cmethod(k)=cmet(k) ! -"-
             END DO
             clight=cl    ! -"-
-            N=NN
             mass=0
             DO I=1,N
-                M(I)=MX(I)
                 mass=mass+m(i)
             END DO
 
@@ -959,10 +1399,6 @@ c           step=0
                 END DO
             END DO
             MMIJ=MMIJ/(N*(N-1)/2.d0)
-            DO I=1,3*N
-                X(I)=XX(I)
-                V(I)=VX(I)
-            END DO
             IF(MMIJ.EQ.0.0)THEN
             WRITE(6,*)'You have at most one non-zero mass 
      &                  => t''=1/0 and'
@@ -977,10 +1413,10 @@ c           step=0
         CALL CONSTANTS OF MOTION(ENERGY,G0,ALAG)
         EnerGr=0 ! energy radiated away
         gtime=1/ALAG
-        DO K=1,3
-            CMX(K)=CMXX(K)
-            CMV(K)=CMVX(K)
-        END DO
+        do K=1,3
+           CMX(K)=CMXX(K)
+           CMV(K)=CMVX(K)
+        end do
         CALL omegacoef
         STIME=0.0
         NEWREG=.FALSE.
@@ -1062,12 +1498,8 @@ c           step=0
         END IF
         IF(stimex.EQ.0.0)stimex=step
         CALL update x and v
-        DO I=1,3*N
-            XX(I)=X(I)
-            VX(I)=V(I)
-        END DO
         DO I=1,3
-            spini(I)=spin(I)
+            spini(I)= spin(I)
             CMXX(I)=CMX(I)
             CMVX(I)=CMV(I)
         END DO
@@ -1260,15 +1692,15 @@ c               IF(1.e-3*mmij.GT.m(i)*m(j).AND.cmethod(2).ne.0.0)THEN
         DO I=1,N-1
         L=3*(I-1)
         DO K=1,3
-        XCinc(L+K)=XCinc(L+k)+WC(L+K)*dT
-        XC(L+K)=XC(L+K)+WC(L+K)*dT
+            XCinc(L+K)= XCinc(L+k)+WC(L+K)*dT
+            XC(L+K)= XC(L+K)+WC(L+K)*dT
         END DO
         END DO
         CHTIMEinc=CHTIMEinc+dT
         CHTIME=CHTIME+dT
         DO k=1,3
-        CMXinc(k)=CMXinc(k)+dt*cmv(k)
-        cmx(k)=cmx(k)+dt*cmv(k)
+            CMXinc(k)= CMXinc(k)+dt*cmv(k)
+            cmx(k)= cmx(k) +dt*cmv(k)
         END DO
         RETURN
         END
@@ -1291,8 +1723,8 @@ c               IF(1.e-3*mmij.GT.m(i)*m(j).AND.cmethod(2).ne.0.0)THEN
         END DO
         WTTLw=WTTL
         DO k=1,3
-            spinw(k)=spin(k)
-            cmvw(k)=cmv(k)
+            spinw(k)= spin(k)
+            cmvw(k)= cmv(k)
         END DO
 
         RETURN
@@ -1366,16 +1798,25 @@ C        Is this a triangle with smallest size not regularised?
 
 
         SUBROUTINE FIND CHAIN INDICES
-         INCLUDE 'archain.h'
+        INCLUDE 'archain.h'
         REAL*8 RIJ2(NMXM)
         INTEGER IC(NMX2),IJ(NMXM,2),IND(NMXM)
+        REAL*8 TINSPIRAL, THUBBLE
         LOGICAL USED(NMXM),SUC,LOOP
         SAVE
+        THUBBLE = 1.0e4  !set Hubble time to 10 Gyr
+        Clightpn = 0.0 ! SET SPEED OF LIGHT FOR PN TERM IMPLEMENTATION TO ZERO AND ONLY INCREASE IF T_INSPIRAL IS SMALLER THAN HUBBLE TIME
         L=0
         DO I=1,N-1
         DO J=I+1,N
         L=L+1
         RIJ2(L)=SQUARE(X(3*I-2),X(3*J-2))
+        TINSPIRAL = 5.0/256.0*clight**5*RIJ2(L)**2
+     &              /((M(I)*M(J))*(M(I)+M(J)))
+        IF (TINSPIRAL.le.THUBBLE) THEN
+            clightpn = 1.0
+            write(*,*) TINSPIRAL, I, J
+        ENDIF
         IJ(L,1)=I
         IJ(L,2)=J
         USED(L)=.FALSE.
@@ -1512,43 +1953,45 @@ C        Is this a triangle with smallest size not regularised?
         SAVE
 C        Center of mass
         DO K=1,3
-        CMX(K)=0.0
-        CMV(K)=0.0
+            CMX(K)=0.0
+            CMV(K)=0.0
         END DO
         MASS=0.0
         DO I=1,N
-        L=3*(I-1)
-        MC(I)=M(INAME(I)) ! masses along the chain
-        MASS=MASS+MC(I)
-         DO K=1,3
-         CMX(K)=CMX(K)+M(I)*X(L+K)
-         CMV(K)=CMV(K)+M(I)*V(L+K)
-         END DO
+            L=3*(I-1)
+            MC(I)=M(INAME(I)) ! masses along the chain
+            MASS=MASS+MC(I)
+            DO K=1,3
+                CMX(K)= CMX(K)+M(I)*X(L+K)
+                CMV(K)= CMV(K)+M(I)*V(L+K)
+            END DO
         END DO
         DO K=1,3
-        CMX(K)=CMX(K)/MASS
-        CMV(K)=CMV(K)/MASS
+            CMX(K)= CMX(K)/MASS
+            CMV(K)= CMV(K)/MASS
         END DO
 c       Rearange according to chain indices.
         DO I=1,N
-        L=3*(I-1)
-        LF=3*INAME(I)-3
-         DO K=1,3
-         XI(L+K)=X(LF+K)
-         VI(L+K)=V(LF+K)
-         END DO
+            L=3*(I-1)
+            LF=3*INAME(I)-3
+            DO K=1,3
+                XI(L+K)=X(LF+K)
+                VI(L+K)=V(LF+K)
+            END DO
         END DO
 
 C       Chain coordinates & vels ! AND INITIAL `WTTL'
         WTTL=0            !  initialize W 
         DO I=1,N-1
-        L=3*(I-1)
-        DO K=1,3
-        XC(L+K)=XI(L+K+3)-XI(L+K)
-        WC(L+K)=VI(L+K+3)-VI(L+K)
+            L=3*(I-1)
+            DO K=1,3
+                XC(L+K)=XI(L+K+3)-XI(L+K)
+                WC(L+K)=VI(L+K+3)-VI(L+K)
+            END DO
         END DO
-        END DO
+
         RETURN
+
         END
 
 
@@ -1571,27 +2014,27 @@ C        Obtain physical variables from chain quantities.
         V0(k)=0.0
         END DO
         DO I=1,N-1
-        L=3*(I-1)
-        DO K=1,3
-        VI(L+3+K)=VI(L+K)+WC(L+K)
-        XI(L+3+K)=XI(L+K)+XC(L+K)
-        END DO
+            L=3*(I-1)
+            DO K=1,3
+                VI(L+3+K)=VI(L+K)+WC(L+K)
+                XI(L+3+K)=XI(L+K)+XC(L+K)
+            END DO
         END DO
         DO I=1,N
-        L=3*(I-1)
-        DO K=1,3
-        V0(K)=V0(K)+VI(L+K)*MC(I)/MASS
-        X0(K)=X0(K)+XI(L+K)*MC(I)/MASS
-        END DO
+            L=3*(I-1)
+            DO K=1,3
+                V0(K)=V0(K)+VI(L+K)*MC(I)/MASS
+                X0(K)=X0(K)+XI(L+K)*MC(I)/MASS
+            END DO
         END DO
 C        Rearrange according to INAME(i) and add CM.
         DO I=1,N
-        L=3*(I-1)
-        LF=3*(INAME(I)-1)
-        DO K=1,3
-        X(LF+K)=XI(L+K)-X0(K)!+CMX(K) ! CM-coords
-        V(LF+K)=VI(L+K)-V0(K)!+CMV(K) ! CM-vels
-        END DO
+            L=3*(I-1)
+            LF=3*(INAME(I)-1)
+            DO K=1,3
+                X(LF+K)=XI(L+K)-X0(K)
+                V(LF+K)=VI(L+K)-V0(K)
+            END DO
         END DO
         RETURN
         END
@@ -1669,8 +2112,8 @@ C        SUBTRACT
 C       Auxiliary quantities.
         MASS=0.0
         DO I=1,N
-        MC(I)=M(INAME(I))
-        MASS=MASS+MC(I)
+            MC(I)=M(INAME(I))
+            MASS=MASS+MC(I)
         END DO
 
         RETURN
@@ -1828,7 +2271,7 @@ c       END of I-loop
         SUBROUTINE SubSteps(Y0,Y,H,Leaps)
         IMPLICIT REAL*8 (a-h,m,o-z)
         REAL*8 Y(*),Y0(*)!,ytest(1000)
-        COMMON/softening/ee,cmethod(3),Clight,NofBh
+        COMMON/softening/ee,cmethod(3),Clight,Clightpn,NofBh
         COMMON/collision/icollision,Ione,Itwo,iwarning
         SAVE
         icollision=0
@@ -1894,11 +2337,11 @@ c       END of I-loop
         END DO
         DO i=1,3
         L=L+1
-        Y(L)=CMXinc(I)
+        Y(L)= CMXinc(I)
         END DO
         DO i=1,3
         L=L+1
-        Y(L)=CMVinc(I)
+        Y(L)= CMVinc(I)
         END DO
         L=L+1
         Y(L)=ENERGYinc
@@ -1937,11 +2380,11 @@ c        Nvar=L
         END DO
         DO i=1,3
         L=L+1
-        CMX(I)=Y(L)
+        CMX(I)= Y(L)
         END DO
         DO i=1,3
         L=L+1
-        CMV(I)=Y(L)
+        CMV(I)= Y(L)
         END DO
         L=L+1
         ENERGY=Y(L)
@@ -1980,11 +2423,11 @@ c        Nvar=L
         END DO
         DO i=1,3
         L=L+1
-        Y(L)=CMX(I)
+        Y(L)= CMX(I)
         END DO
         DO i=1,3
         L=L+1
-        Y(L)=CMV(I)
+        Y(L)= CMV(I)
         END DO
         L=L+1
         Y(L)=ENERGY
@@ -2065,17 +2508,17 @@ c        IF(SY(L).EQ.0.0)SY(L)=1
         END DO ! i
 
 
-        CMXA=abs(cmx(1))+abs(cmx(2))+abs(cmx(3))+SR/N
-        CMVA=abs(cmv(1))+abs(cmv(2))+abs(cmv(3))+SW/N
+        CMXAT= abs(cmx(1))+abs(cmx(2))+abs(cmx(3))+SR/N
+        CMVAT= abs(cmv(1))+abs(cmv(2))+abs(cmv(3))+SW/N
 
         DO i=1,3
         L=L+1
-        SY(L)=CMXA*w_new+sy(L)*w_old ! cmx
+        SY(L)= CMXAT*w_new+sy(L)*w_old ! cmx
         END DO
 
         DO i=1,3
         L=L+1
-        SY(L)=CMVA*w_new+sy(L)*w_old ! cmv
+        SY(L)= CMVAT*w_new+sy(L)*w_old ! cmv
         END DO
 
         L=L+1
@@ -2127,7 +2570,7 @@ C        Rearrange according to INAME(i) and add CM.
         L=3*(I-1)
         LF=3*(INAME(I)-1)
         DO K=1,3
-        X(LF+K)=XI(L+K)-X0(K)!+CMX(K) ! CM-coords
+        X(LF+K)=XI(L+K)-X0(K)
         END DO
         END DO
         RETURN
@@ -2167,7 +2610,7 @@ C        Rearrange according to INAME(i) and add CM.
         L=3*(I-1)
         LF=3*(INAME(I)-1)
         DO K=1,3
-        VN(LF+K)=VI(L+K)-V0(K)!+CMV(K)
+        VN(LF+K)=VI(L+K)-V0(K)
         V(LF+K)=VN(LF+K) ! 
         END DO
         END DO
@@ -2181,9 +2624,9 @@ C        Rearrange according to INAME(i) and add CM.
 
 
 
-       SUBROUTINE Relativistic ACCELERATIONS(ACC,ACCGR,Va,spina,dspin)
+       SUBROUTINE Relativistic ACCELERATIONS(ACC,ACCGR,Vap,spina,dspin)
         INCLUDE 'archain.h'
-        REAL*8 ACC(*),dX(3),dW(3),dF(3),Va(*),ACCGR(*),dfGR(3),dsp(3)
+        REAL*8 ACC(*),dX(3),dW(3),dF(3),Vap(*),ACCGR(*),dfGR(3),dsp(3)
      &  ,spina(3),dspin(3)
           COMMON/collision/icollision,ione,itwo,iwarning
         COMMON/notneeded/rijnotneeded
@@ -2215,9 +2658,9 @@ C       INITIALIZE THE relativistic acceration(s) here.
         dx(1)=X(J1)-X(I1)
         dx(2)=X(J2)-X(I2)
         dx(3)=X(J3)-X(I3)
-        dw(1)=Va(J1)-Va(I1)
-        dw(2)=Va(J2)-Va(I2)
-        dw(3)=Va(J3)-Va(I3)
+        dw(1)=Vap(J1)-Vap(I1)
+        dw(2)=Vap(J2)-Vap(I2)
+        dw(3)=Vap(J3)-Vap(I3)
         ELSE
         K1=3*IK-2
         K2=K1+1
@@ -2225,9 +2668,9 @@ C       INITIALIZE THE relativistic acceration(s) here.
         dx(1)=XC(K1)
         dx(2)=XC(K2)
         dx(3)=XC(K3)
-        dw(1)=Va(J1)-Va(I1) 
-        dw(2)=Va(J2)-Va(I2)
-        dw(3)=Va(J3)-Va(I3)
+        dw(1)=Vap(J1)-Vap(I1)
+        dw(2)=Vap(J2)-Vap(I2)
+        dw(3)=Vap(J3)-Vap(I3)
         END IF
         vij2=dw(1)**2+dw(2)**2+dw(3)**2
 c       This (cheating) avoids vij>cl and produces only O(1/c^6) 'errors'.
@@ -2255,7 +2698,7 @@ c-----------------------------------------------------
          CALL Relativistic
      &  Terms(Ii,dX,dW,rij,rDOtv,vij2,m(Ii),m(Jx),cl,DF,dfGR,spina,dsp)
             RS=2.d0*(m(i)+m(j))/CL**2
-          test= 4.0*RS!4*RS !Collision Criterium
+          test= 10000.0*RS!4*RS !Collision Criterium
 c          WRITE(6,*)rij/RS,sqrt(vij2)/cl,' R  V '
 c                         test=.99*Rs
         IF(rij.LT.test.AND.iwarning.LT.2)
@@ -2264,12 +2707,17 @@ c                         test=.99*Rs
             IF(rij.LT.test)THEN!
             iwarning=iwarning+1
             icollision=1   ! collision indicator
-            ione=min(i,j)
-            itwo=max(i,j)
+            IF (M(i).GE.M(j)) THEN
+                 ione=i
+                 itwo=j
+            ELSE
+                 ione=j
+                 itwo=i
+            END IF
             RETURN
             END IF
          DO k=1,3
-         dspin(k)=dspin(k)+dsp(k)
+         dspin(k)= dspin(k)+dsp(k)
          END DO
         ACC(I1)=ACC(I1)+m(j)*dF(1) ! here I assume action = reaction
         ACC(I2)=ACC(I2)+m(j)*dF(2) ! which is not REALly true for 
@@ -2288,87 +2736,19 @@ c        Grav.Rad.-terms
                       END IF
         END DO ! J
         END DO ! I
-         DO k=1,3
-         akiih(k)=acc(k+3)
-         END DO ! REMOVE THIS LOOP(diagno only)
+
         RETURN
         END
 
 
 
-************************************************************
-************************************************************
-
-
-
-         SUBROUTINE Relativistic terms_not in use
-     &   (I1,X,V,r,rDOtv,v2,m1,m2,c,DV,DVgr,spina,dspin)
-         IMPLICIT REAL*8 (a-h,m,n,o-z)
-         REAL*8 X(3),V(3),DV(3),n(3),ny,nv,m1,m2,m
-         REAL*8 dv2(3),dv3(3),dv4(3),dv5(3),dvgr(3),spina(3),dspin(3)
-         DATA beta,gamma/1.d0,1.d0/
-         SAVE
-          m=m1+m2
-
-          my=m1*m2/m
-
-          ny=my/m
-          n(1)=x(1)/r
-          n(2)=x(2)/r
-          n(3)=x(3)/r
- 
-          nv=rDOtv/r
-          v4=v2*v2
-           r2=r*r
-           
-                         IF(1.EQ.1)THEN
-           DO i=1,3
-          dv2(i)=m/c**2*n(i)/r2*(m/r*(2*(beta+gamma)+2*ny) ! 1/c**2 terms
-     &    -v2*(gamma+3*ny)+3*ny/2*nv**2)
-     &    +m*v(i)*nv/c**2/r**2*(2*gamma+2-2*ny)
-           END DO
-         
-          
-          DO i=1,3
-          dv4(i)=1/c**4*(                               ! 1/c**4 terms
-     & +ny*m*n(i)/r2*(-2*v4+1.5d0*v2*nv**2*(3-4*ny)-15*nv**4/8*(1-3*ny))
-     &  +m**2*n(i)/r**3*(v2/2*ny*(11+4*ny)+2*nv**2*(1+ny*(12+3*ny)))
-     &  +ny*m*v(i)/r**2*(8*v2*nv-3*nv**3/2*(3+2*ny))
-     &  -m**2/2/r**3*v(i)*nv*(4+43*ny)-m**3*n(i)/r**4*(9+87*ny/4))
-           END DO
-                  ELSE
-                  DO k=1,3
-                  dv2(k)=0
-                  dv4(k)=0
-                  END DO
-                  END IF
-           DO i=1,3                         
-           dv5(i)=ny/c**5*(   ! gravitational radiation terms
-     &    -8*m**2/r**3/5*(v(i)*(v2+3*m/r)-n(i)*nv*(3*v2+17*m/3/r)))
-           END DO
-         IF(I1.EQ.1)THEN
-         CALL gopu_SpinTerms(X,V,r,M1,m2,c,spina,dv3,dspin) ! spinterms ->dv3
-         ELSE
-         DO k=1,3
-         dv3(k)=0
-         dspin(k)=0
-         END DO
-         END IF
-           DO i=1,3
-           dv(i)=-1/m*(dv2(i)+dv3(i)+dv4(i)+dv5(i))
-           dvgr(i)=-1/m*dv5(i)
-           END DO
-          RETURN
-          END
-
-
 
 ************************************************************
 ************************************************************
 
 
 
-         SUBROUTINE Relativistic terms!_not in use
+         SUBROUTINE Relativistic terms
      &   (I1,X,V,r,rDOtv,vv,m1,m2,c,DV,DVgr,spina,dspin)
          IMPLICIT REAL*8 (a-h,m,n,o-z)
          REAL*8 n(3),x(3),v(3),dV(3),dVgr(3),spina(3),dspin(3)
@@ -2384,56 +2764,61 @@ c           pi= 3.14159265358979324d0
          END DO
          m=m1+m2
          eta=m1*m2/m**2
-        A1=2*(2+eta)*(m/r)-(1+3*eta)*vv +1.5d0*eta*vr**2
+C        A1=2*(2+eta)*(m/r)-(1+3*eta)*vv +1.5d0*eta*vr**2
         
-        A2=-.75d0*(12+29*eta)*(m/r)**2-eta*(3-4*eta)*vv**2
-     &     -15.d0/8*eta*(1-3*eta)*vr**4+.5d0*eta*(13-4*eta)*(m/r)*vv
-     &     +(2+25*eta+2*eta**2)*(m/r)*vr**2+1.5d0*eta*(3-4*eta)*vv*vr**2
+C        A2=-.75d0*(12+29*eta)*(m/r)**2-eta*(3-4*eta)*vv**2
+C     &     -15.d0/8*eta*(1-3*eta)*vr**4+.5d0*eta*(13-4*eta)*(m/r)*vv
+C     &     +(2+25*eta+2*eta**2)*(m/r)*vr**2+1.5d0*eta*(3-4*eta)*vv*vr**2
 
         A2p5=8.d0/5*eta*(m/r)*vr*(17.d0/3*(m/r)+3*vv)
-        A3=(16+(1399./12-41./16*pi2)*eta+71./2*eta*eta)*(m/r)**3
-     &    +eta*(20827./840+123./64*pi2-eta**2)*(m/r)**2*vv
-     &    -(1+(22717./168+615./64*pi2)*eta+11./8*eta**2-7*eta**3)
-     &  *(m/r)**2*vr**2
-     &    -.25d0*eta*(11-49*eta+52*eta**2)*vv**3
-     &    +35./16*eta*(1-5*eta+5*eta**2)*vr**6
-     &    -.25d0*eta*(75+32*eta-40*eta**2)*(m/r)*vv**2
-     &    -.5d0*eta*(158-69*eta-60*eta**2)*(m/r)*vr**4
-     &    +eta*(121-16*eta-20*eta**2)*(m/r)*vv*vr**2
-     &    +3./8*eta*(20-79*eta+60*eta**2)*vv**2*vr**2
-     &    -15./8*eta*(4-18*eta+17*eta**2)*vv*vr**4
+C        A3=(16+(1399./12-41./16*pi2)*eta+71./2*eta*eta)*(m/r)**3
+C     &    +eta*(20827./840+123./64*pi2-eta**2)*(m/r)**2*vv
+C     &    -(1+(22717./168+615./64*pi2)*eta+11./8*eta**2-7*eta**3)
+C     &  *(m/r)**2*vr**2
+C     &    -.25d0*eta*(11-49*eta+52*eta**2)*vv**3
+C     &    +35./16*eta*(1-5*eta+5*eta**2)*vr**6
+C     &    -.25d0*eta*(75+32*eta-40*eta**2)*(m/r)*vv**2
+C     &    -.5d0*eta*(158-69*eta-60*eta**2)*(m/r)*vr**4
+C     &    +eta*(121-16*eta-20*eta**2)*(m/r)*vv*vr**2
+C     &    +3./8*eta*(20-79*eta+60*eta**2)*vv**2*vr**2
+C     &    -15./8*eta*(4-18*eta+17*eta**2)*vv*vr**4
 
-        A3p5=-8./5*eta*(m/r)*vr*(23./14*(43+14*eta)*(m/r)**2
-     &       +3./28*(61+70*eta)*vv**2
-     &       +70*vr**4+1./42*(519-1267*eta)*(m/r)*vv
-     &       +.25d0*(147+188*eta)*(m/r)*vr**2-15/4.*(19+2*eta)*vv*vr**2)
+C        A3p5=-8./5*eta*(m/r)*vr*(23./14*(43+14*eta)*(m/r)**2
+C     &       +3./28*(61+70*eta)*vv**2
+C     &       +70*vr**4+1./42*(519-1267*eta)*(m/r)*vv
+C     &       +.25d0*(147+188*eta)*(m/r)*vr**2-15/4.*(19+2*eta)*vv*vr**2)
 
-        B1=2*(2-eta)*vr
-        B2=-.5d0*vr*((4+41*eta+8*eta**2)*(m/r)-eta*(15+4*eta)*vv
-     &      +3*eta*(3+2*eta)*vr**2)
+C        B1=2*(2-eta)*vr
+C        B2=-.5d0*vr*((4+41*eta+8*eta**2)*(m/r)-eta*(15+4*eta)*vv
+C     &      +3*eta*(3+2*eta)*vr**2)
         B2p5=-8./5.*eta*(m/r)*(3*(m/r)+vv)
-        B3=vr*((4+(5849./840.+123./32.*pi2)*eta
-     &      -25*eta**2-8*eta**3)*(m/r)**2
-     &      +1./8.*eta*(65-152*eta-48*eta**2)*vv**2
-     &      +15/8.*eta*(3-8*eta-2*eta**2)*vr**4
-     &      +eta*(15+27*eta+10*eta**2)*(m/r)*vv
-     &      -1./6.*eta*(329+177*eta+108*eta**2)*(m/r)*vr**2
-     &      -.75*eta*(16-37*eta-16*eta**2)*vv*vr**2)
+C        B3=vr*((4+(5849./840.+123./32.*pi2)*eta
+C     &      -25*eta**2-8*eta**3)*(m/r)**2
+C     &      +1./8.*eta*(65-152*eta-48*eta**2)*vv**2
+C     &      +15/8.*eta*(3-8*eta-2*eta**2)*vr**4
+C     &      +eta*(15+27*eta+10*eta**2)*(m/r)*vv
+C     &      -1./6.*eta*(329+177*eta+108*eta**2)*(m/r)*vr**2
+C     &      -.75*eta*(16-37*eta-16*eta**2)*vv*vr**2)
      
-         B3p5=8./5.*eta*(m/r)*(1./42.*(1325+546*eta)*(m/r)**2
-     &    +1./28.*(313+42*eta)*vv**2+75*vr**4
-     &     -1./42.*(205+777*eta)*(m/r)*vv
-     &     +1./12.*(205+424*eta)*(m/r)*vr**2-.75*(113+2*eta)*vv*vr**2)
-     
-c                A3p5=0
-c                B3p5=0
+C         B3p5=8./5.*eta*(m/r)*(1./42.*(1325+546*eta)*(m/r)**2
+C     &    +1./28.*(313+42*eta)*vv**2+75*vr**4
+C     &     -1./42.*(205+777*eta)*(m/r)*vv
+c     &     +1./12.*(205+424*eta)*(m/r)*vr**2-.75*(113+2*eta)*vv*vr**2)
+
+C  SWITCHED OFF ALL THE PN TERMS EXCEPT FOR PN2.5
+                A1=0
+                B1=0
+                A2=0
+                B2=0
+                A3p5=0
+                B3p5=0
 c                A2p5=0
 c                B2p5=0
-c                A3=0
-c                B3=0
+                A3=0
+                B3=0
 
-            Atot=A1/c**2+A2/c**4+A2p5/c**5!+A3/c**6+A3p5/c**7
-            Btot=B1/c**2+B2/c**4+B2p5/c**5!+B3/c**6+B3p5/c**7
+            Atot=A2p5/c**5!A1/c**2+A2/c**4+A2p5/c**5!+A3/c**6+A3p5/c**7
+            Btot=B2p5/c**5!B1/c**2+B2/c**4+B2p5/c**5!+B3/c**6+B3p5/c**7
             Afric=A2p5/c**5!+A3p5/c**7 ! *0 IF you want to 
             Bfric=B2p5/c**5!+B3p5/c**7 ! *0    -"-
          IF(I1.EQ.1)THEN
@@ -2449,11 +2834,8 @@ c                B3=0
            dV(k)=-m/r**2*(n(k)*Atot+v(k)*Btot)/m-dvq(k)/m ! in the code /m and +?-?
            dvgr(k)=-m/r**2*(n(k)*Afric+v(k)*Bfric)/m
            END DO
-c          turhia           
-c           rw=r/(2*m/c**2)
-c           fr=cDOt(x,dV)/r
-c           frm=fr-m/r**2
-       END
+
+        END
 
 
 
@@ -2896,14 +3278,15 @@ C        Non-chained contribution
          END DO ! J=I+2,N
         END DO  ! I=1,N-2
          dT=hs/(U*cmethod(1)+OMEGA*cmethod(2)+cmethod(3)) ! time interval
-           CALL Coordinate DepENDent Perturbations (acc) 
+
+        CALL Coordinate DepENDent Perturbations (acc)
                  DO i=1,n-1
                  DO k=1,3
                  L=3*(i-1)
                  FC(L+k)=f(3*i+k)-f(3*i+k-3)
                  END DO
                  END DO
-         IF(clight.GT.0.0)THEN       ! V-depENDent ACC 
+         IF(clight.GT.0.0)THEN       ! V-depENDent ACC
          CALL  V_jump(Ww,spinw,cmvw,WTTLw,WC,spin,FC,acc,dt/2
      &  ,gom,energyj,energrj,1) ! Auxiliary W (=Ww) etc
          CALL V_jump(WC,spin,cmv,WTTL,Ww,spinw,FC,acc,dt
@@ -2937,14 +3320,14 @@ C        Non-chained contribution
 
         CALL EVALUATE V(V,WCi)
 c adding V-dependent perts.
-        IF(clight.GT.0.0)THEN
+        if(clight.gt.0.0)then
             CALL Velocity Dependent Perturbations
      &           (dT,V,spini,acc,dcmv,df,dfGR,dspin)
-        ELSE
-            DO i=1,3*n
+        else
+            do i=1,3*n
                 df(i)=acc(i)
-            END DO
-        END IF
+            end do
+        end if
         DO i=1,n-1
             L=3*I-3
             I1=3*INAME(I)-3
@@ -2996,13 +3379,13 @@ c adding V-dependent perts.
         END DO
 
         DO k=1,3
-            spinj(k)=spinj(k)+dT*dspin(k)
-            cmvj(k)=cmvj(k)+dT*dcmv(k)
+            spinj(k)= spinj(k)+dT*dspin(k)
+            cmvj(k)= cmvj(k)+dT*dcmv(k)
         END DO
         IF(ind.EQ.2)THEN
             DO k=1,3
-                spin inc(k)=spin inc(k)+dT*dspin(k)
-                cmv inc(k)=cmv inc(k)+dT*dcmv(k)
+                spin inc(k)= spin inc(k)+dT*dspin(k)
+                cmv inc(k)= cmv inc(k)+dT*dcmv(k)
             END DO
         END IF ! ind.EQ.2
 
@@ -3032,9 +3415,10 @@ c adding V-dependent perts.
         END DO
         END DO
         CALL EVALUATE V(V,WCi) 
-        CALL reduce 2 cm(acc,m,n,dcmv) 
+        CALL reduce 2 cm(acc,m,n,dcmv)
+
         DO I=1,3*N
-        V(I)=V(I)+acc(I)*dT/2 ! average Velocity
+            V(I)=V(I)+acc(I)*dT/2 ! average Velocity
         END DO
 c adding V-depENDent perts.
                  DO i=1,n-1
@@ -3079,8 +3463,8 @@ c adding V-depENDent perts.
         END DO
 
         DO k=1,3
-        cmv inc(k)=cmv inc(k)+dT*dcmv(k)
-        cmvj(k)=cmvj(k)+dT*dcmv(k)
+        cmv inc(k)= cmv inc(k)+dT*dcmv(k)
+        cmvj(k)= cmvj(k)+dT*dcmv(k)
         END DO
         RETURN
         END
@@ -3099,7 +3483,7 @@ c adding V-depENDent perts.
         COMMON/omegacoefficients/OMEC(NMX,NMX) ! not part of archain.h
         COMMON/eitoimi/iei
         REAL*8 xij(3),vij(3),gx(5)
-        COMMON/toolarge/beta,ma,mb,itoo,iw,jw,n_alku
+        COMMON/toolarge/beta,maa,mb,itoo,iw,jw,n_alku
 
       SAVE
                        nr=0
@@ -3169,16 +3553,16 @@ c     evaluate lenght of chain
         kp=0
         delta_t=dtime !!!
         END IF
-        ma=m(i)
+        maa=m(i)
         mb=m(j)
-                                               Xa=0
-         CALL Xanom(mipj,r,eta,zeta,beta,delta_t,Xa,rx,gx) ! Solve KPLR-eqs. 
-         step=step+alfa*(Xa+oa*kp*period) ! Here the Stumpff-Weiss principle is used.
+                                               Xap=0
+         CALL Xanom(mipj,r,eta,zeta,beta,delta_t,Xap,rx,gx) ! Solve KPLR-eqs.
+         step=step+alfa*(Xap+oa*kp*period) ! Here the Stumpff-Weiss principle is used.
          END IF
          END DO 
          END DO
         IF(iwr.GT.0)  WRITE(91,*)nr,nx
-        RETURN 
+        RETURN
          END
 
 
@@ -3213,7 +3597,7 @@ c     evaluate lenght of chain
         parameter(o2=1.d0/2,o6=1.d0/6,o8=1.d0/8,o16=1.d0/16)
         REAL*8 C(5)
         SAVE
-          COMMON/toolarge/beta,ma,mb,itoo,iw,jw,n_alku
+          COMMON/toolarge/beta,maa,mb,itoo,iw,jw,n_alku
                      COMMON/diagno/ncfunc
                                    ncfunc=ncfunc+1
         itoo=0
@@ -3222,8 +3606,8 @@ c     evaluate lenght of chain
         IF(ABS(h).LT.0.9d0)goto 2
         h=h/4 ! divide by 4 untill h<.9
         END DO
-                               akseli=(ma+mb)/beta
-        WRITE(6,106)Z,iw,jw,ma,mb,beta,akseli,n_alku
+                               akseli=(maa+mb)/beta
+        WRITE(6,106)Z,iw,jw,maa,mb,beta,akseli,n_alku
 106     FORMAT(' too large Z=',1p,g12.4, '4 c-functions',
      &  0p,2i5,1p,4g12.4,i5,' ijmab_beta ax n_a')
 
@@ -3270,9 +3654,9 @@ c-------KPLR solver------------------------------
         IMPLICIT REAL*8 (a-h,m,o-z)
         REAL*8 g(5)
         COMMON/diagno/ncfunc
-                 COMMON/collision/icollision,ione,itwo,iwarning
+        COMMON/collision/icollision,ione,itwo,iwarning
          COMMON/eitoimi/iei
-         COMMON/toolarge/betaa,ma,mb,itoo,iw,jw,n_alku
+         COMMON/toolarge/betaa,maa,mb,itoo,iw,jw,n_alku
 c       Solution of the `universal' form of Kepler's equation.
 c       input: m=mass, r =r(0)=dist, eta=r.v, zet=m-r*beta, beta=m/a, t=time-incr
 c       { note:  eta=sqrt[m a]*e Sin[E],  zeta=m e Cos[E] }
@@ -3480,7 +3864,7 @@ c       final correction of g's  & r-evaluation
 
         IMPLICIT REAL*8 (a-h,m,o-z)
         REAL*8 X(3),Y(3),SQUARE
-        COMMON/softening/ee,cmethod(3),clight,NofBH ! only ee needed here
+        COMMON/softening/ee,cmethod(3),clight,Clightpn,NofBH ! only ee needed here
         SAVE
 
         SQUARE=(X(1)-Y(1))**2+(X(2)-Y(2))**2+(X(3)-Y(3))**2+ee
