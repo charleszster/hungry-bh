@@ -1,17 +1,17 @@
 C***********************************************************************
 C
 C
-      FUNCTION pe_func(rh_local, rc_local)
+      FUNCTION pe_func(rc_local)
 C
 C
 C***********************************************************************
       INCLUDE 'hermite.h'
-      REAL*8 rh_local, rc_local
+      REAL*8 rc_local
 
-      pe_func = -G*Ms**2./(PI*(rh_local-rc_local)**2.)*
-     &                    (rc_local*log(4.) + rh_local*log(4.) -
-     &                    2*rc_local*log(1.+rh_local/rc_local) -
-     &                    2*rh_local*log(1.+rc_local/rh_local))
+      pe_func = -G*Ms**2./(PI*(rh-rc_local)**2.)*
+     &                    (rc_local*log(4.) + rh*log(4.) -
+     &                    2*rc_local*log(1.+rh/rc_local) -
+     &                    2*rh*log(1.+rc_local/rh))
       RETURN
       END
 
@@ -39,7 +39,7 @@ C
 C***********************************************************************
       INCLUDE 'hermite.h'
 
-      rho_c = Ms*(SO_rh()+rc)/(2.*PI**2.*rc**2.*SO_rh()**2.)
+      rho_c = Ms*(rh+rc)/(2.*PI**2.*rc**2.*rh**2.)
       RETURN
       END
 
@@ -53,7 +53,7 @@ C***********************************************************************
 
       INCLUDE 'hermite.h'
       REAL*8 r
-      SO_rho = rho_c/((1+r**2/rc**2)*(1+r**2/SO_rh()**2))
+      SO_rho = rho_c/((1+r**2/rc**2)*(1+r**2/rh**2))
       RETURN
       END
 
@@ -66,16 +66,14 @@ C
 C***********************************************************************
 
       INCLUDE 'hermite.h'
-      REAL*8 rh_local, r
+      REAL*8 r
 
-      rh_local = SO_rh()
-
-      SO_r_ddot = 4*PI*G*rho_c()*rc**2.*rh_local**2.*
-     &            (-(rh_local/r**2.)*atan(r/rh_local) + 
-     &             (1/r)*(1/(1+r**2./rh_local**2.)) + 
+      SO_r_ddot = 4*PI*G*rho_c()*rc**2.*rh**2.*
+     &            (-(rh/r**2.)*atan(r/rh) + 
+     &             (1/r)*(1/(1+r**2./rh**2.)) + 
      &             (rc/r**2.)*atan(r/rc) - (1/r)*(1/(1+r**2./rc**2.)) +
-     &             (r/(r**2.+rh_local**2.)) - (r/(r**2.+rc**2.))) /
-     &            (rh_local**2.-rc**2.)
+     &             (r/(r**2.+rh**2.)) - (r/(r**2.+rc**2.))) /
+     &            (rh**2.-rc**2.)
       RETURN
       END
 
@@ -88,23 +86,22 @@ C
 C***********************************************************************
 
       INCLUDE 'hermite.h'
-      REAL*8 r, rh_local, r_dot
+      REAL*8 r, r_dot
       INTEGER i
 
-      rh_local = SO_rh()
       r_dot = sqrt(vx(i)*vx(i) + vy(i)*vy(i) + vz(i)*vz(i))
-      SO_r_tdot = 4*PI*G*rho_c()*rc**2.*rh_local**2.*r_dot*
-     &            ((2.*rh_local/r**3.)*atan(r/rh_local) - 
+      SO_r_tdot = 4*PI*G*rho_c()*rc**2.*rh**2.*r_dot*
+     &            ((2.*rh/r**3.)*atan(r/rh) - 
      &             (2*rc/r**3.)*atan(r/rc) -
-     &             (1/r**2.)*(2./(1+r**2./rh_local**2.)) +
+     &             (1/r**2.)*(2./(1+r**2./rh**2.)) +
      &             (1/r**2.)*(2/(1+r**2./rc**2.)) -
-     &             (1/rh_local**2.)*(2./(1+r**2./rh_local**2.)**2.) +
+     &             (1/rh**2.)*(2./(1+r**2./rh**2.)**2.) +
      &             (1/rc**2.)*(2/(1+r**2./rc**2.)**2.) +
-     &             1/(r**2.+rh_local**2.) - 1/(r**2+rc**2.) -
-     &             (2*r**2./rh_local**4.)*
-     &             (1/(1+r**2./rh_local**2.)**2.) +
+     &             1/(r**2.+rh**2.) - 1/(r**2+rc**2.) -
+     &             (2*r**2./rh**4.)*
+     &             (1/(1+r**2./rh**2.)**2.) +
      &             (2*r**2./rc**4.)*(1/(1+r**2./rc**2.)**2.)) /
-     &            (rh_local**2.-rc**2.)
+     &            (rh**2.-rc**2.)
       RETURN
       END
 
@@ -136,11 +133,10 @@ C
 C***********************************************************************
 
       INCLUDE 'hermite.h'
-      REAL*8 rh_local, r
+      REAL*8 r
 
-      rh_local = SO_rh()
       Yrhrc = 1./(2.*r**2.) + log(r**2./(r**2. + rc**2.))/(2.*rc**2.) -
-     &        log(1. + rc**2./r**2.)/(6.*rh_local**2.)
+     &        log(1. + rc**2./r**2.)/(6.*rh**2.)
       RETURN
       END
 
@@ -153,14 +149,13 @@ C
 C***********************************************************************
 
       INCLUDE 'hermite.h'
-      REAL*8 r, rh_local
+      REAL*8 r
 
-      rh_local = SO_rh()
       Yrcrh = (PI*rc + r - 2.*rc*atan(rc/r))/(6.*r**3.) -
      &         log(1. + rc**2./r**2.)/(6.*rc**2.) -
-     &         PI*rc/(2.*r*rh_local**2.) +
-     &         rc*atan(rc/r)/(r*rh_local**2.) -
-     &         log(1. + rc**2./r**2.)/(2.*rh_local**2.)
+     &         PI*rc/(2.*r*rh**2.) +
+     &         rc*atan(rc/r)/(r*rh**2.) -
+     &         log(1. + rc**2./r**2.)/(2.*rh**2.)
 
       RETURN
       END
@@ -174,14 +169,103 @@ C
 C***********************************************************************
 
       INCLUDE 'hermite.h'
-      REAL*8 r, vr2so, rh_local
+      REAL*8 r, vr2so
 
-      rh_local = SO_rh()
-      vr2so = -4.*PI*G*rho_c()*rc**2.*rh_local**2.*
-     &         (r**2. + rh_local**2.)*(r**2. + rc**2.)*(Yrhrc(r) +
-     &         Yr1r1(r, rc) + Yr1r1(r, rh_local) + Yrcrh(r)) /
-     &         (rc**2. - rh_local**2.)**2.
+      vr2so = -4.*PI*G*rho_c()*rc**2.*rh**2.*
+     &         (r**2. + rh**2.)*(r**2. + rc**2.)*(Yrhrc(r) +
+     &         Yr1r1(r, rc) + Yr1r1(r, rh) + Yrcrh(r)) /
+     &         (rc**2. - rh**2.)**2.
       sigma_near = (3.*vr2so)**0.5
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      FUNCTION dsignear_drh(r)
+C
+C
+C***********************************************************************
+
+      INCLUDE 'hermite.h'
+      REAL*8 r
+      dsignear_drh = -2.449*PI*SQRT(-G*Ms*(r**2.0 + rc**2.0)*
+     & (r**2.0 + rh**2.0)*(rc + rh)*(rc**2.0 - rh**2.0)**(-2.0)*(-0.5*
+     & PI*rc*rh**(-2.0)/r + 0.04166*r**(-3.0)*rc**(-2.0)*
+     & (-3.0*r**3.0*(PI**2.0 - 4.0*ATAN(r/rc)**2.0) + 16.0*r**3.0*
+     & LOG(r**(-2.0)*rc**2.0 + 1.0) - 4.0*rc*(-3.0*PI*r**2.0 +
+     & PI*rc**2.0 + r*rc - (-6.0*r**2.0 + 2.0*rc**2.0)*ATAN(rc/r))) +
+     & 0.04166*r**(-3.0)*rh**(-2.0)*(-3.0*r**3.0*(PI**2.0 -
+     & 4.0*ATAN(r/rh)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*rh**2.0 + 1.0) -
+     & 4.0*rh*(-3.0*PI*r**2.0 + PI*rh**2.0 + r*rh - (-6.0*r**2.0 + 2.0*
+     & rh**2.0)*ATAN(rh/r))) + 0.167*r**(-3.0)*(PI*rc + r -
+     & 2.0*rc*ATAN(rc/r)) + 0.5*r**(-2.0) + 0.5*rc**(-2.0)*LOG(r**2.0/
+     & (r**2.0 + rc**2.0)) - 0.167*rc**(-2.0)*LOG(r**(-2.0)*
+     & rc**2.0 + 1.0) - 0.667*rh**(-2.0)*LOG(r**(-2.0)*
+     & rc**2.0 + 1.0) + rc*rh**(-2.0)*ATAN(rc/r)/r)/PI)*(rc**2.0 -
+     & rh**2.0)**2.0*(-2.0*G*Ms*rh**1.0*(r**2.0 + rc**2.0)*(r**2.0 +
+     & rh**2.0)*(rc + rh)*(rc**2.0 - rh**2.0)**(-3.0)*(-0.5*PI*rc*
+     & rh**(-2.0)/r + 0.04167*r**(-3.0)*rc**(-2.0)*(-3.0*
+     & r**3.0*(PI**2.0 - 4.0*ATAN(r/rc)**2.0) + 16.0*r**3.0*
+     & LOG(r**(-2.0)*rc**2.0 + 1.0) - 4.0*rc*(-3.0*PI*r**2.0 + PI*
+     & rc**2.0 + r*rc - (-6.0*r**2.0 + 2.0*rc**2.0)*ATAN(rc/r))) +
+     & 0.04167*r**(-3.0)*rh**(-2.0)*(-3.0*r**3.0*(PI**2.0 - 4.0*
+     & ATAN(r/rh)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*rh**2.0 + 1.0) -
+     & 4.0*rh*(-3.0*PI*r**2.0 + PI*rh**2.0 + r*rh - (-6.0*r**2.0 + 2.0*
+     & rh**2.0)*ATAN(rh/r))) + 0.0167*r**(-3.0)*(PI*rc + r - 2.0*rc*
+     & ATAN(rc/r)) + 0.5*r**(-2.0) + 0.5*rc**(-2.0)*LOG(r**2.0/(r**2.0 +
+     & rc**2.0)) - 0.0167*rc**(-2.0)*LOG(r**(-2.0)*rc**2.0 + 1.0) -
+     & 0.667*rh**(-2.0)*LOG(r**(-2.0)*rc**2.0 + 1.0) + rc*rh**(-2.0)*
+     & ATAN(rc/r)/r)/PI - 1.0*G*Ms*rh**1.0*(r**2.0 + rc**2.0)*(rc + rh)*
+     & (rc**2.0 - rh**2.0)**(-2.0)*(-0.5*PI*rc*rh**(-2.0)/r + 0.04167*
+     & r**(-3.0)*rc**(-2.0)*(-3.0*r**3.0*(PI**2.0 - 4.0*ATAN(r/rc)**2.0)
+     & + 16.0*r**3.0*LOG(r**(-2.0)*rc**2.0 + 1.0) - 4.0*rc*(-3.0*PI*
+     & r**2.0 + PI*rc**2.0 + r*rc - (-6.0*r**2.0 + 2.0*rc**2.0)*
+     & ATAN(rc/r))) + 0.04167*r**(-3.0)*rh**(-2.0)*(-3.0*r**3.0*(PI**2.0
+     & - 4.0*ATAN(r/rh)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*rh**2.0 + 1.0)
+     & - 4.0*rh*(-3.0*PI*r**2.0 + PI*rh**2.0 + r*rh - (-6.0*r**2.0 +
+     & 2.0*rh**2.0)*ATAN(rh/r))) + 0.0167*r**(-3.0)*(PI*rc + r - 2.0*rc*
+     & ATAN(rc/r)) + 0.5*r**(-2.0) + 0.5*rc**(-2.0)*LOG(r**2.0/(r**2.0 +
+     & rc**2.0)) - 0.0167*rc**(-2.0)*LOG(r**(-2.0)*rc**2.0 + 1.0) -
+     & 0.667*rh**(-2.0)*LOG(r**(-2.0)*rc**2.0 + 1.0) + rc*rh**(-2.0)*
+     & ATAN(rc/r)/r)/PI - G*Ms*(r**2.0 + rc**2.0)*(r**2.0 + rh**2.0)*
+     & (rc + rh)*(rc**2.0 - rh**2.0)**(-2.0)*(1.0*PI*rc*rh**(-3.0)/r -
+     & 0.0833*r**(-3.0)*rh**(-3.0)*(-3.0*r**3.0*(PI**2.0 - 4.0*
+     & ATAN(r/rh)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*rh**2.0 + 1.0) - 4.0
+     & *rh*(-3.0*PI*r**2.0 + PI*rh**2.0 + r*rh - (-6.0*r**2.0 + 2.0*
+     & rh**2.0)*ATAN(rh/r))) + 0.04167*r**(-3.0)*rh**(-2.0)*(12.0*PI*
+     & r**2.0 - 4.0*PI*rh**2.0 + 32.0*r**1.0*rh**1.0/(r**(-2.0)*rh**2.0+
+     & 1.0) - 4.0*r*rh - 24.0*r**4.0*ATAN(r/rh)**1.0/(rh**2*(r**2/rh**2+
+     & 1)) - 4.0*rh*(2.0*PI*rh**1.0 + r - 4.0*rh**1.0*ATAN(rh/r) - (-6.0
+     & *r**2.0 + 2.0*rh**2.0)/(r*(1 + rh**2/r**2))) + 4.0*(-6.0*r**2.0 +
+     & 2.0*rh**2.0)*ATAN(rh/r)) + 1.333*rh**(-3.0)*LOG(r**(-2.0)*rc**2.0
+     & +1.0) - 2.0*rc*rh**(-3.0)*ATAN(rc/r)/r)/(2*PI) - G*Ms*(r**2.0 +
+     & rc**2.0)*(r**2.0 + rh**2.0)*(rc**2.0 - rh**2.0)**(-2.0)*(-0.5*PI*
+     & rc*rh**(-2.0)/r + 0.04167*r**(-3.0)*rc**(-2.0)*(-3.0*r**3.0*(
+     & PI**2.0 - 4.0*ATAN(r/rc)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*
+     & rc**2.0 + 1.0) - 4.0*rc*(-3.0*PI*r**2.0 + PI*rc**2.0 + r*rc -
+     & (-6.0*r**2.0 + 2.0*rc**2.0)*ATAN(rc/r))) + 0.04167*r**(-3.0)*
+     & rh**(-2.0)*(-3.0*r**3.0*(PI**2.0 - 4.0*ATAN(r/rh)**2.0) + 16.0*
+     & r**3.0*LOG(r**(-2.0)*rh**2.0 + 1.0) - 4.0*rh*(-3.0*PI*r**2.0 +
+     & PI*rh**2.0 + r*rh - (-6.0*r**2.0 + 2.0*rh**2.0)*ATAN(rh/r))) +
+     & 0.0167*r**(-3.0)*(PI*rc + r - 2.0*rc*ATAN(rc/r)) + 0.5*r**(-2.0)
+     & + 0.5*rc**(-2.0)*LOG(r**2.0/(r**2.0 + rc**2.0)) - 0.0167*
+     & rc**(-2.0)*LOG(r**(-2.0)*rc**2.0 + 1.0) - 0.667*rh**(-2.0)*
+     & LOG(r**(-2.0)*rc**2.0 + 1.0) + rc*rh**(-2.0)*ATAN(rc/r)/r)/
+     & (2*PI))/(G*Ms*(r**2.0 + rc**2.0)*(r**2.0 + rh**2.0)*(rc + rh)*
+     & (-0.5*PI*rc*rh**(-2.0)/r + 0.04167*r**(-3.0)*rc**(-2.0)*(-3.0*
+     & r**3.0*(PI**2.0 - 4.0*ATAN(r/rc)**2.0) + 16.0*r**3.0*
+     & LOG(r**(-2.0)*rc**2.0 + 1.0) - 4.0*rc*(-3.0*PI*r**2.0 + PI*
+     & rc**2.0 + r*rc - (-6.0*r**2.0 + 2.0*rc**2.0)*ATAN(rc/r))) +
+     & 0.04167*r**(-3.0)*rh**(-2.0)*(-3.0*r**3.0*(PI**2.0 - 4.0*
+     & ATAN(r/rh)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*rh**2.0 + 1.0) -
+     & 4.0*rh*(-3.0*PI*r**2.0 + PI*rh**2.0 + r*rh - (-6.0*r**2.0 + 2.0*
+     & rh**2.0)*ATAN(rh/r))) + 0.0167*r**(-3.0)*(PI*rc + r - 2.0*rc*
+     & ATAN(rc/r)) + 0.5*r**(-2.0) + 0.5*rc**(-2.0)*LOG(r**2.0/(r**2.0 +
+     & rc**2.0)) - 0.0167*rc**(-2.0)*LOG(r**(-2.0)*rc**2.0 + 1.0) -
+     & 0.667*rh**(-2.0)*LOG(r**(-2.0)*rc**2.0 + 1.0) + rc*rh**(-2.0)*
+     & ATAN(rc/r)/r))
 
       RETURN
       END
@@ -195,21 +279,20 @@ C
 C***********************************************************************
 
       INCLUDE 'hermite.h'
-      REAL*8 r, rh_local
+      REAL*8 r
 
-      rh_local = SO_rh()
-      sigma_far = (6.*G*Ms*(r**2. + rh_local**2.)*(r**2. + rc**2.)*
-     &               (PI*(rh_local-rc))**(-1.)*
-     &               (PI**2./(8.*rh_local**4.) +
-     &                PI/(6.*rh_local*r**3.) + 
-     &                1./(6.*rh_local**2.*r**2.) -
-     &                PI/(2.*rh_local**3.*r) - atan(r/rh_local)**2./
-     &                (2.*rh_local**4.) - atan(rh_local/r)/
-     &                (3.*rh_local*r**3.) + atan(rh_local/r)/
-     &                (rh_local**3.*r) - 2.*log(1.+rh_local**2./r**2.)/
-     &                (3.*rh_local**4.) - rc*PI*(rh_local**3. -
-     &                3.*rh_local*r**2. + 3.*r**3.*atan(rh_local/r))/
-     &                (6.*rh_local**5.*r**3.)))**0.5
+      sigma_far = (6.*G*Ms*(r**2. + rh**2.)*(r**2. + rc**2.)*
+     &               (PI*(rh-rc))**(-1.)*
+     &               (PI**2./(8.*rh**4.) +
+     &                PI/(6.*rh*r**3.) + 
+     &                1./(6.*rh**2.*r**2.) -
+     &                PI/(2.*rh**3.*r) - atan(r/rh)**2./
+     &                (2.*rh**4.) - atan(rh/r)/
+     &                (3.*rh*r**3.) + atan(rh/r)/
+     &                (rh**3.*r) - 2.*log(1.+rh**2./r**2.)/
+     &                (3.*rh**4.) - rc*PI*(rh**3. -
+     &                3.*rh*r**2. + 3.*r**3.*atan(rh/r))/
+     &                (6.*rh**5.*r**3.)))**0.5
 
       RETURN
       END
@@ -217,21 +300,78 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      SUBROUTINE funcd(rc_test, fn, df)
+      FUNCTION dsigfar_drh(r)
+C
+C
+C***********************************************************************
+
+      INCLUDE 'hermite.h'
+      REAL*8 r
+
+      dsigfar_drh = 2.44948974278318*(PI*(-rc + rh))*SQRT(G*Ms*(PI*
+     & (-rc + rh))**(-1.0)*(r**2.0 + rc**2.0)*(r**2.0 + rh**2.0)*
+     & (-0.166666666666667*PI*r**(-3.0)*rc*rh**(-5.0)*(-3.0*r**2.0*rh +
+     & 3.0*r**3.0*ATAN(rh/r) + rh**3.0) + 0.166666666666667*PI*r**(-3.0)
+     & /rh - 0.5*PI*rh**(-3.0)/r + 0.125*PI**2.0*rh**(-4.0) -
+     & 0.333333333333333*r**(-3.0)*ATAN(rh/r)/rh + 0.166666666666667*
+     & r**(-2.0)*rh**(-2.0) - 0.666666666666667*rh**(-4.0)*LOG(r**(-2.0)
+     & *rh**2.0 + 1.0) - 0.5*rh**(-4.0)*ATAN(r/rh)**2.0 + rh**(-3.0)*
+     & ATAN(rh/r)/r))*(G*Ms*rh**1.0*(PI*(-rc + rh))**(-1.0)*(r**2.0 +
+     & rc**2.0)*(-0.166666666666667*PI*r**(-3.0)*rc*rh**(-5.0)*(-3.0*
+     & r**2.0*rh + 3.0*r**3.0*ATAN(rh/r) + rh**3.0) + 0.166666666666667*
+     & PI*r**(-3.0)/rh - 0.5*PI*rh**(-3.0)/r + 0.125*PI**2.0*rh**(-4.0)
+     & - 0.333333333333333*r**(-3.0)*ATAN(rh/r)/rh + 0.166666666666667*
+     & r**(-2.0)*rh**(-2.0) - 0.666666666666667*rh**(-4.0)*LOG(r**(-2.0)
+     & *rh**2.0 + 1.0) - 0.5*rh**(-4.0)*ATAN(r/rh)**2.0 + rh**(-3.0)*
+     & ATAN(rh/r)/r) + G*Ms*(PI*(-rc + rh))**(-1.0)*(r**2.0 + rc**2.0)
+     & *(r**2.0 + rh**2.0)*(0.833333333333333*PI*r**(-3.0)*rc*rh**(-6.0)
+     & *(-3.0*r**2.0*rh + 3.0*r**3.0*ATAN(rh/r) + rh**3.0) -
+     & 0.166666666666667*PI*r**(-3.0)*rc*rh**(-5.0)*(-3.0*r**2.0 + 3.0*
+     & r**2.0/(1 + rh**2/r**2) + 3.0*rh**2.0) - 0.166666666666667*PI*
+     & r**(-3.0)/rh**2 + 1.5*PI*rh**(-4.0)/r - 0.5*PI**2.0*rh**(-5.0) -
+     & 0.333333333333333*r**(-4.0)/(rh*(1 + rh**2/r**2)) +
+     & 0.333333333333333*r**(-3.0)*ATAN(rh/r)/rh**2 - 0.333333333333333*
+     & r**(-2.0)*rh**(-3.0) - 1.33333333333333*r**(-2.0)*rh**(-3.0)/
+     & (r**(-2.0)*rh**2.0 + 1.0) + 1.0*r*rh**(-6.0)*ATAN(r/rh)**1.0/
+     & (r**2/rh**2 + 1) + 2.66666666666667*rh**(-5.0)*LOG(r**(-2.0)*
+     & rh**2.0 + 1.0) + 2.0*rh**(-5.0)*ATAN(r/rh)**2.0 - 3.0*rh**(-4.0)*
+     & ATAN(rh/r)/r + rh**(-3.0)/(r**2*(1 + rh**2/r**2)))/2 - 0.5*G*
+     & Ms*(PI*(-rc + rh))**(-1.0)*(r**2.0 + rc**2.0)*(r**2.0 + 
+     & rh**2.0)*(-0.166666666666667*PI*r**(-3.0)*rc*rh**(-5.0)*(-3.0*
+     & r**2.0*rh + 3.0*r**3.0*ATAN(rh/r) + rh**3.0) + 0.166666666666667*
+     & PI*r**(-3.0)/rh - 0.5*PI*rh**(-3.0)/r + 0.125*PI**2.0*rh**(-4.0)
+     & - 0.333333333333333*r**(-3.0)*ATAN(rh/r)/rh + 0.166666666666667*
+     & r**(-2.0)*rh**(-2.0) - 0.666666666666667*rh**(-4.0)*LOG(r**(-2.0)
+     & *rh**2.0 + 1.0) - 0.5*rh**(-4.0)*ATAN(r/rh)**2.0 + rh**(-3.0)*
+     & ATAN(rh/r)/r)/(-rc + rh)) / (G*Ms*(r**2.0 + rc**2.0)*(r**2.0 +
+     & rh**2.0)*(-0.166666666666667*PI*r**(-3.0)*rc*rh**(-5.0)*(-3.0*
+     & r**2.0*rh + 3.0*r**3.0*ATAN(rh/r) + rh**3.0) + 0.166666666666667*
+     & PI*r**(-3.0)/rh - 0.5*PI*rh**(-3.0)/r + 0.125*PI**2.0*rh**(-4.0)
+     & - 0.333333333333333*r**(-3.0)*ATAN(rh/r)/rh + 0.166666666666667*
+     & r**(-2.0)*rh**(-2.0) - 0.666666666666667*rh**(-4.0)*LOG(r**(-2.0)
+     & *rh**2.0 + 1.0) - 0.5*rh**(-4.0)*ATAN(r/rh)**2.0 + rh**(-3.0)*
+     & ATAN(rh/r)/r))
+
+      RETURN
+      END
+
+C***********************************************************************
+C
+C
+      SUBROUTINE rc_funcd(rc_test, fn, df)
 C
 C
 C***********************************************************************
       INCLUDE 'hermite.h'
-      REAL*8 rh_local, rc_test, fn, df
+      REAL*8 rc_test, fn, df
 
-      rh_local = SO_rh()
-      fn = pe - pe_func(rh_local, rc_test)
-      df = -(-G*Ms**2./(PI*(rh_local-rc_test)**2.)*(LOG(4.) - 
-     &       2*LOG(1.+rh_local/rc_test) + 2*rh_local/(rc_test+rh_local)-
-     &       2/(1.+rc_test/rh_local)) - 
-     &       2*G*Ms**2./(PI*(rh_local-rc_test)**3.)*(rc_test*LOG(4.) +
-     &       rh_local*LOG(4.) - 2*rc_test*LOG(1.+rh_local/rc_test)-
-     &       2*rh_local*LOG(1.+rc_test/rh_local)))
+      fn = pe - pe_func(rc_test)
+      df = -(-G*Ms**2./(PI*(rh-rc_test)**2.)*(LOG(4.) - 
+     &       2*LOG(1.+rh/rc_test) + 2*rh/(rc_test+rh)-
+     &       2/(1.+rc_test/rh)) - 
+     &       2*G*Ms**2./(PI*(rh-rc_test)**3.)*(rc_test*LOG(4.) +
+     &       rh*LOG(4.) - 2*rc_test*LOG(1.+rh/rc_test)-
+     &       2*rh*LOG(1.+rc_test/rh)))
 
       RETURN
       END
@@ -239,30 +379,86 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      FUNCTION rtnewt(x1, x2, xacc)
+      SUBROUTINE find_rc_newt(x1, x2, rc_next)
 C
 C
 C***********************************************************************
       INCLUDE 'hermite.h'
       INTEGER JMAX, j
-      REAL*8 x1, x2, xacc
-      EXTERNAL funcd
+      REAL*8 x1, x2, tol, rc0
+      EXTERNAL rc_funcd
       PARAMETER (JMAX=20)
       REAL*8 f, df, dx
 
-      rtnewt = 0.5*(x1+x2)
+      tol = 1.d-3
+      rc0 = 0.5*(x1+x2)
       DO 11 j=1,JMAX
-          CALL funcd(rtnewt, f, df)
+          CALL rc_funcd(rc0, f, df)
           dx = f/df
-          rtnewt = rtnewt - dx
-C          write(*,*)x1, x2,rtnewt
-          IF((x1 - rtnewt)*(rtnewt - x2) .LT. 0.) THEN
-               write(*,*) Ms,rs,pe, f, df, dx
-               WRITE(*,*) 'rtnewt jumped out of brackets'
-               READ(*,*)
+          rc_next = rc0 - dx
+          IF((x1 - rc_next)*(rc_next - x2) .LT. 0.) THEN
+C               write(*,*) Ms,rs,pe, f, df, dx
+               WRITE(*,*) 'find_rc_newt jumped out of brackets'
+C               READ(*,*)
           ENDIF
-          IF(abs(dx) .LT. xacc) RETURN
+          IF(abs(rc_next/rc0-1.) .LT. tol) THEN
+              RETURN
+          ELSE
+              rc0 = rc_next
+          ENDIF
  11   CONTINUE
-      WRITE(*,*) 'rtnewt exceeded maximum iterations'
-      READ(*,*)
+      WRITE(*,*) 'find_rc_newt exceeded maximum iterations'
+C      READ(*,*)
+      END
+
+C***********************************************************************
+C
+C
+      SUBROUTINE rh_funcd(f, df)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      REAL*8 f, df
+
+      IF(eff_rad .GE. SQRT(rc*rh)) THEN
+          f = sigma_far(eff_rad) - sigma_faber
+          df = dsigfar_drh(eff_rad)
+      ELSE
+          f = sigma_near(eff_rad) - sigma_faber
+          df = dsignear_drh(eff_rad)
+      ENDIF
+      RETURN
+      END
+C***********************************************************************
+C
+C
+      SUBROUTINE find_rh_newt(rh_next)
+C
+C
+C***********************************************************************
+      INCLUDE 'hermite.h'
+      INTEGER JMAX, j
+      REAL*8 rh_curr, rh_next, tol
+      EXTERNAL rh_funcd
+      PARAMETER (JMAX=20)
+      REAL*8 f, df, dx
+
+      tol = 0.001
+      rh_curr = rh_next
+      DO 12 j=1,JMAX
+          CALL rh_funcd(f, df)
+          dx = f/df
+          rh_next = rh_curr - dx
+          IF(ABS(rh_next/rh_curr - 1.) .LE. tol) THEN
+              RETURN
+          ELSE
+C              WRITE(*,*) Ms, eff_rad, f, df, rh_curr, 
+C     &        ABS(rh_next/rh_curr-1.)
+              rh_curr = rh_next
+              rh = rh_next
+          ENDIF
+ 12   CONTINUE
+      WRITE(*,*) 'find_rh_newt exceeded maximum iterations'
+C      READ(*,*)
       END

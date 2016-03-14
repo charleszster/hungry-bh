@@ -111,7 +111,7 @@ def curve_fit_any_galaxy_mass(galaxies_masses, galaxy_num):
 
 def plot_max_masses_galaxies_orig_and_fitted(galaxies_max_mass, galaxies_max_mass_fitted, top_masses):
     for k, v in galaxies_max_mass.iteritems():
-        print 'plotting galaxy id ', k
+        print('plotting galaxy id ', k)
         xdata = v[1]
         ydata_log10 = np.log10(v[2])
         if k=='65':

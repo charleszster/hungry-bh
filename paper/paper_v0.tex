@@ -1,0 +1,121 @@
+\documentclass[english, apj]{emulateapj}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{array}
+\usepackage{rotating}
+\usepackage{units}
+\usepackage{textcomp}
+\usepackage{amsmath}
+\usepackage{amsbsy}
+\usepackage{amstext}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{babel}
+\usepackage[backref,breaklinks,colorlinks,citecolor=blue]{hyperref}
+\usepackage[all]{hypcap}
+
+\makeatletter
+
+\newcommand{\msun}{\mbox{$\,{\rm M}_\odot$}}
+
+\sloppy
+
+\providecommand{\tabularnewline}{\\}
+
+
+
+
+\begin{document}
+
+
+\title{Some Title}
+
+
+\author{Charles Zivancev\altaffilmark{1}, Andreas H.W. K\"upper\altaffilmark{1,2}, Jeremiah P. Ostriker \altaffilmark{1}}
+\altaffiltext{1}{Department of Astronomy, Columbia University, 550 West 120th Street, New York, NY 10027, USA}
+\altaffiltext{2}{Hubble Fellow}
+\email{Correspondence to: akuepper@astro.columbia.edu}
+
+
+
+
+\begin{abstract}
+Here Charles can write an abstract.
+\end{abstract}
+
+
+\keywords{dark matter --- Galaxy: halo --- Galaxy: kinematics and dynamics}
+
+
+
+
+\section{Introduction}\label{sec:introduction}
+Just some introduction
+....
+
+
+
+\section{Some name}\label{sec:somename}
+
+%figure example
+\begin{figure}
+\centering
+%\includegraphics[width=0.45\textwidth]{plots/halflight.png}
+\caption{...}
+\label{halflight}
+\end{figure}
+
+
+%table example
+\begin{table*}
+ \centering
+ \label{tab:profiles}
+ \caption{Ellipse, 2D S\'ersic, and 2D Gauss fits to the $N$-body models}
+ \begin{tabular}{cc|ccc|ccc|cc}
+ Model & $r_{eff,0}$ [pc] & $a$ [pc] &  $a$ [deg] & $\epsilon$ & S\'ersic $n$ & S\'ersic $r_{eff}$ [deg] & S\'ersic $\epsilon$ & Gauss $\sigma_1$ [deg] & Gauss $\epsilon$\\
+ \hline
+1 & 30 & 29 & 0.012 & 0.05 & 1.1 & 0.013 & 0.09 & 0.010  & 0.05 \\
+2 & 37 & 35 & 0.014 & 0.05 & 1.1 & 0.020 & 0.02 & 0.013  & 0.04 \\
+3 & 45 & 53 & 0.022 & 0.11 & 1.5 & 0.047 & 0.13 & 0.027  & 0.15 \\
+4 & 52 & 128 & 0.052 & 0.40 & 1.2 & 0.093 & 0.15 & 0.054  & 0.26 \\
+5 & 60 & 142 & 0.058 & 0.03 & 1.4 & 0.219 & 0.39 & 0.108  & 0.39 \\
+6 & 67 & 310 & 0.123 & 0.48 & 1.4 & 0.395 & 0.57 & 0.213  & 0.61 \\
+\end{tabular}
+\end{table*}
+
+
+
+
+
+\subsection{...}
+We want to cite \citet{Aarseth03}, who is referenced in Sec.~\ref{sec:introduction}. He came up with the equation
+\begin{equation}
+M(r) = \frac{GM}{r^2}.
+\end{equation}
+
+
+\section{Conclusions}\label{sec:conclusions}
+
+...
+
+
+
+
+\section*{Acknowledgements}
+
+...
+
+
+
+\bibliographystyle{apj}
+\begin{thebibliography}{}
+
+\bibitem[\protect\citeauthoryear{Aarseth}{2003}]{Aarseth03}
+Aarseth, S.~J., 2003, Gravitational N-Body Simulations (Cambridge University Press)
+
+
+\end{thebibliography}
+\end{document}
+
+
+

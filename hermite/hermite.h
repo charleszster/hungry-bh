@@ -6,9 +6,9 @@
       REAL*8 r200, concentration, rho_crit
       REAL*8 SO_rh, rho_c, SO_rho, SO_r_ddot, SO_r_tdot
       REAL*8 Yr1r1, Yrhrc, Yrcrh, sigma_near, sigma_far
-      REAL*8 Ms,rs,rc
-      REAL*8 energy, ke, pe_func, pe, rtnewt
-      REAL*8 stlr_mass,infall_time
+      REAL*8 Ms,rs,rc, rh, eff_rad
+      REAL*8 energy, ke, pe_func, pe
+      REAL*8 stlr_mass,infall_time,sigma_faber
 
       PARAMETER(nmax=100000)
       PARAMETER(t0=1.5653765d+03) !Myr
@@ -73,4 +73,4 @@ C*******************************************************************************
      &       adotx_old(0:nmax),adoty_old(0:nmax),
      &       adotz_old(0:nmax),pot_old(0:nmax),mass(0:nmax),
      &       e(0:nmax),e0(0:nmax),l(0:nmax),l0(0:nmax),guest_bhs(206,3),
-     &       Ms,rs,rc,energy,ke,pe,infall_time
+     &       Ms,rs,rc,rh,energy,eff_rad,ke,pe,infall_time,sigma_faber
