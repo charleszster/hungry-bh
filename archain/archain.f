@@ -15,7 +15,7 @@
         COMMON/justforfun/Tkin,Upot,dSkin,dSpot
         COMMON/outputindex/index4output(200)
         COMMON/collision/icollision,ione,itwo,iwarning
-        COMMON/galaxy/MCL,RPL
+        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
      &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX)
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
@@ -46,7 +46,7 @@
 *       Read input values from STDIN
         READ(5,*,err=999)OUTNAME,N,Nbh,DELTAT,TMAX, DTOUT
         READ(5,*,err=999)IWR,soft,cmet, Clight,Ixc ,spin,tolerance
-        READ(5,*,err=999)MCL,RPL
+        READ(5,*,err=999)MCL,RPL,RCORE,GTYPE
 
 *       Initialize variables
         TMAX = TMAX/14.90763847 ! Scaling from pc, Myr, Msun to Nbody units
@@ -84,6 +84,20 @@ C       for tidal mass gain
         DO I=1,NA
             L=3*(I-1)
             READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
+
+            RGAL = sqrt(XA(L+1)**2+XA(L+2)**2+XA(L+3)**2)
+            IF (RGAL>0) THEN
+                VBH = sqrt(0.0043*GALMASS(RGAL)/RGAL)
+            ELSE
+                VBH = 0.0
+            END IF
+
+            VA(L+1) = 0.0
+            VA(L+2) = VBH
+            VA(L+3) = 0.0
+
+            WRITE(*,*) RGAL, VBH
+
             MASS=MASS+MA(I)
             VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
             VA(L+2) = VA(L+2)*14.90763847
@@ -121,6 +135,7 @@ C       for tidal mass gain
             VA(L+1) = V(L+1)+CMVX(1)+CMVA(1)
             VA(L+2) = V(L+2)+CMVX(2)+CMVA(2)
             VA(L+3) = V(L+3)+CMVX(3)+CMVA(3)
+
         END DO
 
         DELT = 0.0
@@ -740,7 +755,7 @@ C        WRITE(*,*) "VPAR: ", VPAR
         SUBROUTINE COORDINATE DEPENDENT PERTURBATIONS(ACC) ! USER DEFINED
 
         INCLUDE 'archain.h'
-        COMMON/galaxy/MCL,RPL
+        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
         REAL*8 ACC(*)
         REAL*8 RGAL2, ACCEL
         SAVE
@@ -753,18 +768,36 @@ C       are assumed to be in the vector ACC.
 
 
 C---  init acc
-        DO  I=1,N
-            RGAL2 = (X(3*I-2)+CMX(1)+CMXA(1))**2+(X(3*I-1)
-     &           +CMX(2)+CMXA(2))**2+(X(3*I)+CMX(3)
-     &           +CMXA(3))**2+RPL*RPL
 
-            ACCEL = 1.0d0*MCL/RGAL2**1.5
 
-            ACC(3*I-2) = -ACCEL*(X(3*I-2)+CMX(1)+CMXA(1))
-            ACC(3*I-1) = -ACCEL*(X(3*I-1)+CMX(2)+CMXA(2))
-            ACC(3*I)   = -ACCEL*(X(3*I)+CMX(3)+CMXA(3))
+        IF (GTYPE.EQ.1) THEN   !JERRY PROFILE
+            DO  I=1,N
+                RGAL2 = (X(3*I-2)+CMX(1)+CMXA(1))**2+(X(3*I-1)
+     &              +CMX(2)+CMXA(2))**2+(X(3*I)+CMX(3)
+     &              +CMXA(3))**2
 
-        END DO
+                ACCEL = 0.0 !INSERT CODE HERE
+
+                ACC(3*I-2) = -ACCEL*(X(3*I-2)+CMX(1)+CMXA(1))
+                ACC(3*I-1) = -ACCEL*(X(3*I-1)+CMX(2)+CMXA(2))
+                ACC(3*I)   = -ACCEL*(X(3*I)+CMX(3)+CMXA(3))
+
+            END DO
+
+        ELSE                    !PLUMMER PROFILE
+            DO  I=1,N
+                RGAL2 = (X(3*I-2)+CMX(1)+CMXA(1))**2+(X(3*I-1)
+     &              +CMX(2)+CMXA(2))**2+(X(3*I)+CMX(3)
+     &              +CMXA(3))**2+RPL*RPL
+
+                ACCEL = 1.0d0*MCL/RGAL2**1.5
+
+                ACC(3*I-2) = -ACCEL*(X(3*I-2)+CMX(1)+CMXA(1))
+                ACC(3*I-1) = -ACCEL*(X(3*I-1)+CMX(2)+CMXA(2))
+                ACC(3*I)   = -ACCEL*(X(3*I)+CMX(3)+CMXA(3))
+
+            END DO
+        END IF
 
         RETURN
 
@@ -827,7 +860,7 @@ C       Relativistic accelerations
 C       Calculate diffusion coefficients assuming velocity isotropy
 
         INCLUDE 'archain.h'
-        COMMON/galaxy/MCL,RPL
+        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
         COMMON/outputindex/index4output(200)
         REAL*8 ERF_NR, ERF_TEMP, FP, FBOT
         REAL*8 DVP, DVP2, DVBOT2, GAUSS
@@ -964,9 +997,10 @@ C       Change scale radius of Plummer sphere based on energy change
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
         PARAMETER (MSTAR=0.45, PI=3.141592653589793)
-        COMMON/galaxy/MCL,RPL
+        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
         REAL*8 R
 
+        !ADD GTYPE DISTINCTION HERE
         GALMASS=MCL*((R/RPL)**3)*((1.0+(R/RPL)**2)**(-1.5))
 
         RETURN
@@ -984,9 +1018,10 @@ C       Change scale radius of Plummer sphere based on energy change
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
         PARAMETER (MSTAR=0.45, PI=3.141592653589793)
-        COMMON/galaxy/MCL,RPL
+        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
         REAL*8 R
 
+        !ADD GTYPE DISTINCTION HERE
         GALRHO = 3.0/(4.0*PI*RPL**3)*MCL*
      &      ((1.0+(R/RPL)**2)**(-2.5))
 
@@ -1002,9 +1037,10 @@ C       Change scale radius of Plummer sphere based on energy change
         REAL*8 FUNCTION GALSIG(R)
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
-        COMMON/galaxy/MCL,RPL
+        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
         REAL*8 R
 
+        !ADD GTYPE DISTINCTION HERE
         GALSIG = MCL/(2.0*RPL)*
      &      (1.0+(R/RPL)**2)**(-0.5)
 
