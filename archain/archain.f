@@ -142,7 +142,7 @@ C       for tidal mass gain
         END DO
 
 C       Include diffusion through encounters with stars
-        CALL DIFFUSION(DELT)
+C        CALL DIFFUSION(DELT)
         NEWREG = .true.
 
 
