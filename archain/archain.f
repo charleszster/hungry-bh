@@ -1001,8 +1001,13 @@ C       Change scale radius of Plummer sphere based on energy change
         REAL*8 R
 
         !ADD GTYPE DISTINCTION HERE
-        GALMASS=MCL*((R/RPL)**3)*((1.0+(R/RPL)**2)**(-1.5))
-
+        IF (GTYPE.EQ.1) THEN
+            GALMASS = 4*PI*RCORE**2.*RPL**2.*rho_c()*
+     &              (RPL*atan(R/RPL)-RCORE*atan(R/RCORE))/
+     &              (RPL**2.-RCORE**2.)
+        ELSE
+            GALMASS=MCL*((R/RPL)**3)*((1.0+(R/RPL)**2)**(-1.5))
+        ENDIF
         RETURN
 
         END
@@ -1022,8 +1027,12 @@ C       Change scale radius of Plummer sphere based on energy change
         REAL*8 R
 
         !ADD GTYPE DISTINCTION HERE
-        GALRHO = 3.0/(4.0*PI*RPL**3)*MCL*
-     &      ((1.0+(R/RPL)**2)**(-2.5))
+        IF (GTYPE.EQ.1) THEN
+            GALRHO = rho_c()/((1+R**2./RCORE**2.)*(1+R**2./RPL**2.))
+        ELSE
+            GALRHO = 3.0/(4.0*PI*RPL**3)*MCL*
+     &          ((1.0+(R/RPL)**2)**(-2.5))
+        ENDIF
 
         RETURN
 
@@ -1038,13 +1047,22 @@ C       Change scale radius of Plummer sphere based on energy change
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
         COMMON/galaxy/MCL,RPL,RCORE,GTYPE
-        REAL*8 R
+        REAL*8 R, r_lim
 
         !ADD GTYPE DISTINCTION HERE
-        GALSIG = MCL/(2.0*RPL)*
-     &      (1.0+(R/RPL)**2)**(-0.5)
+        IF (GTYPE.EQ.1) THEN
+            r_lim = sqrt(RCORE*RPL)
+            IF (R.LE.r_lim) THEN
+                GALSIG = sigma_near(R)
+            ELSE
+                GALSIG = sigma_far(R)
+            END IF
+        ELSE
+            GALSIG = MCL/(2.0*RPL)*
+     &          (1.0+(R/RPL)**2)**(-0.5)
 
-        GALSIG = sqrt(GALSIG/3.0)
+            GALSIG = sqrt(GALSIG/3.0)
+        ENDIF
 
         RETURN
 
