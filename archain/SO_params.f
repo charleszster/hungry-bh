@@ -76,9 +76,9 @@ C***********************************************************************
       SO_r_ddot = 4*PI*G*rho_c()*RCORE**2.*RPL**2.*
      &            (-(RPL/r**2.)*atan(r/RPL) + 
      &             (1/r)*(1/(1+r**2./RPL**2.)) + 
-     &             (RCORE/r**2.)*atan(r/RCORE) - (1/r)*(1/(1+r**2./RCORE**2.)) +
-     &             (r/(r**2.+RPL**2.)) - (r/(r**2.+RCORE**2.))) /
-     &            (RPL**2.-RCORE**2.)
+     &             (RCORE/r**2.)*atan(r/RCORE) - (1/r)*(1/(1+r**2./
+     &             RCORE**2.)) + (r/(r**2.+RPL**2.)) - 
+     &             (r/(r**2.+RCORE**2.))) / (RPL**2.-RCORE**2.)
       RETURN
       END
 
@@ -142,8 +142,8 @@ C***********************************************************************
       COMMON/galaxy/MCL,RPL,RCORE
       REAL*8 r
 
-      Yrhrc = 1./(2.*r**2.) + log(r**2./(r**2. + RCORE**2.))/(2.*RCORE**2.) -
-     &        log(1. + RCORE**2./r**2.)/(6.*RPL**2.)
+      Yrhrc = 1./(2.*r**2.) + log(r**2./(r**2. + RCORE**2.))/
+     &        (2.*RCORE**2.) - log(1. + RCORE**2./r**2.)/(6.*RPL**2.)
       RETURN
       END
 

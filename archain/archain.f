@@ -776,11 +776,12 @@ C---  init acc
      &              +CMX(2)+CMXA(2))**2+(X(3*I)+CMX(3)
      &              +CMXA(3))**2
 
-                ACCEL = 0.0 !INSERT CODE HERE
-
-                ACC(3*I-2) = -ACCEL*(X(3*I-2)+CMX(1)+CMXA(1))
-                ACC(3*I-1) = -ACCEL*(X(3*I-1)+CMX(2)+CMXA(2))
-                ACC(3*I)   = -ACCEL*(X(3*I)+CMX(3)+CMXA(3))
+                ACC(3*I-2) = SO_r_ddot(SQRT(RGAL2))*(X(3*I-2)+CMX(1)+
+     &                       CMXA(1))/SQRT(RGAL2)
+                ACC(3*I-1) = SO_r_ddot(SQRT(RGAL2))*(X(3*I-1)+CMX(2)+
+     &                       CMXA(2))/SQRT(RGAL2)
+                ACC(3*I)   = SO_r_ddot(SQRT(RGAL2))*(X(3*I)+CMX(3)+
+     &                       CMXA(3))/SQRT(RGAL2)
 
             END DO
 
@@ -2842,18 +2843,18 @@ c                B2p5=0
         cm(3)=0
         sm=0
         DO i=1,nb
-        sm=sm+m(i)
-        DO k=1,3
-        cm(k)=cm(k)+m(i)*x(k+3*(i-1))
+          sm=sm+m(i)
+          DO k=1,3
+            cm(k)=cm(k)+m(i)*x(k+3*(i-1))
+          END DO
         END DO
-        END DO
         DO k=1,3
-        cm(k)=cm(k)/sm
+          cm(k)=cm(k)/sm
         END DO
         DO i=1,nb
-        DO k=1,3
-        x(k+3*(i-1))=x(k+3*(i-1))-cm(k)
-        END DO
+          DO k=1,3
+            x(k+3*(i-1))=x(k+3*(i-1))-cm(k)
+          END DO
         END DO
         RETURN
         END
