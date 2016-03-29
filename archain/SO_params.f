@@ -9,7 +9,7 @@ C***********************************************************************
       COMMON/galaxy/MCL,RPL,RCORE
       REAL*8 rc_local
 
-      pe_func = -G*MCL**2./(PI*(RPL-rc_local)**2.)*
+      pe_func = -GC*MCL**2./(PI*(RPL-rc_local)**2.)*
      &                    (rc_local*log(4.) + RPL*log(4.) -
      &                    2*rc_local*log(1.+RPL/rc_local) -
      &                    2*RPL*log(1.+rc_local/RPL))
@@ -19,18 +19,18 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      FUNCTION SO_rh()
+C      FUNCTION SO_rh()
 C
 C
 C***********************************************************************
-      INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE
+C      INCLUDE 'archain.h'
+C      COMMON/galaxy/MCL,RPL,RCORE
 
-      SO_rh = rs*(0.6082 - 0.1843*LOG(concentration()) -
-     &      0.1011*(LOG(concentration())**2.) +
-     &      0.03918*(LOG(concentration())**3.))
-      RETURN
-      END
+C      SO_rh = rs*(0.6082 - 0.1843*LOG(concentration()) -
+C     &      0.1011*(LOG(concentration())**2.) +
+C     &      0.03918*(LOG(concentration())**3.))
+C      RETURN
+C      END
 
 C***********************************************************************
 C
@@ -73,7 +73,7 @@ C***********************************************************************
       COMMON/galaxy/MCL,RPL,RCORE
       REAL*8 r
 
-      SO_r_ddot = 4*PI*G*rho_c()*RCORE**2.*RPL**2.*
+      SO_r_ddot = 4*PI*GC*rho_c()*RCORE**2.*RPL**2.*
      &            (-(RPL/r**2.)*atan(r/RPL) + 
      &             (1/r)*(1/(1+r**2./RPL**2.)) + 
      &             (RCORE/r**2.)*atan(r/RCORE) - (1/r)*(1/(1+r**2./
@@ -85,31 +85,31 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      FUNCTION SO_r_tdot(r,i)
+C      FUNCTION SO_r_tdot(r,i)
 C
 C
 C***********************************************************************
 
-      INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE
-      REAL*8 r, r_dot
-      INTEGER i
+C      INCLUDE 'archain.h'
+C      COMMON/galaxy/MCL,RPL,RCORE
+C      REAL*8 r, r_dot
+C      INTEGER i
 
-      r_dot = sqrt(vx(i)*vx(i) + vy(i)*vy(i) + vz(i)*vz(i))
-      SO_r_tdot = 4*PI*G*rho_c()*RCORE**2.*RPL**2.*r_dot*
-     &            ((2.*RPL/r**3.)*atan(r/RPL) - 
-     &             (2*RCORE/r**3.)*atan(r/RCORE) -
-     &             (1/r**2.)*(2./(1+r**2./RPL**2.)) +
-     &             (1/r**2.)*(2/(1+r**2./RCORE**2.)) -
-     &             (1/RPL**2.)*(2./(1+r**2./RPL**2.)**2.) +
-     &             (1/RCORE**2.)*(2/(1+r**2./RCORE**2.)**2.) +
-     &             1/(r**2.+RPL**2.) - 1/(r**2+RCORE**2.) -
-     &             (2*r**2./RPL**4.)*
-     &             (1/(1+r**2./RPL**2.)**2.) +
-     &             (2*r**2./RCORE**4.)*(1/(1+r**2./RCORE**2.)**2.)) /
-     &            (RPL**2.-RCORE**2.)
-      RETURN
-      END
+C      r_dot = sqrt(vx(i)*vx(i) + vy(i)*vy(i) + vz(i)*vz(i))
+C      SO_r_tdot = 4*PI*GC*rho_c()*RCORE**2.*RPL**2.*r_dot*
+C     &            ((2.*RPL/r**3.)*atan(r/RPL) - 
+C     &             (2*RCORE/r**3.)*atan(r/RCORE) -
+C     &             (1/r**2.)*(2./(1+r**2./RPL**2.)) +
+C     &             (1/r**2.)*(2/(1+r**2./RCORE**2.)) -
+C     &             (1/RPL**2.)*(2./(1+r**2./RPL**2.)**2.) +
+C     &             (1/RCORE**2.)*(2/(1+r**2./RCORE**2.)**2.) +
+C     &             1/(r**2.+RPL**2.) - 1/(r**2+RCORE**2.) -
+C     &             (2*r**2./RPL**4.)*
+C     &             (1/(1+r**2./RPL**2.)**2.) +
+C     &             (2*r**2./RCORE**4.)*(1/(1+r**2./RCORE**2.)**2.)) /
+C     &            (RPL**2.-RCORE**2.)
+C      RETURN
+C      END
 
 C***********************************************************************
 C
@@ -180,7 +180,7 @@ C***********************************************************************
       COMMON/galaxy/MCL,RPL,RCORE
       REAL*8 r, vr2so
 
-      vr2so = -4.*PI*G*rho_c()*RCORE**2.*RPL**2.*
+      vr2so = -4.*PI*GC*rho_c()*RCORE**2.*RPL**2.*
      &         (r**2. + RPL**2.)*(r**2. + RCORE**2.)*(Yrhrc(r) +
      &         Yr1r1(r, RCORE) + Yr1r1(r, RPL) + Yrcrh(r)) /
      &         (RCORE**2. - RPL**2.)**2.
@@ -200,7 +200,7 @@ C***********************************************************************
       INCLUDE 'archain.h'
       COMMON/galaxy/MCL,RPL,RCORE
       REAL*8 r
-      dsignear_drh = -2.449*PI*SQRT(-G*MCL*(r**2.0 + RCORE**2.0)*
+      dsignear_drh = -2.449*PI*SQRT(-GC*MCL*(r**2.0 + RCORE**2.0)*
      & (r**2.0 + RPL**2.0)*(RCORE + RPL)*(RCORE**2.0 - 
      & RPL**2.0)**(-2.0)*(-0.5*PI*RCORE*RPL**(-2.0)/r + 0.04166*
      & r**(-3.0)*RCORE**(-2.0)*(-3.0*r**3.0*(PI**2.0 - 4.0*
@@ -215,7 +215,7 @@ C***********************************************************************
      & LOG(r**2.0/(r**2.0 + RCORE**2.0)) - 0.167*RCORE**(-2.0)*
      & LOG(r**(-2.0)*RCORE**2.0 + 1.0) - 0.667*RPL**(-2.0)*
      & LOG(r**(-2.0)*RCORE**2.0 + 1.0) + RCORE*RPL**(-2.0)*
-     & ATAN(RCORE/r)/r)/PI)*(RCORE**2.0 - RPL**2.0)**2.0*(-2.0*G*MCL*
+     & ATAN(RCORE/r)/r)/PI)*(RCORE**2.0 - RPL**2.0)**2.0*(-2.0*GC*MCL*
      & RPL**1.0*(r**2.0 + RCORE**2.0)*(r**2.0 + RPL**2.0)*(RCORE + RPL)*
      & (RCORE**2.0 - RPL**2.0)**(-3.0)*(-0.5*PI*RCORE*
      & RPL**(-2.0)/r + 0.04167*r**(-3.0)*RCORE**(-2.0)*(-3.0*
@@ -230,7 +230,7 @@ C***********************************************************************
      & RCORE**(-2.0)*LOG(r**2.0/(r**2.0 + RCORE**2.0)) - 0.0167*
      & RCORE**(-2.0)*LOG(r**(-2.0)*RCORE**2.0 + 1.0) - 0.667*
      & RPL**(-2.0)*LOG(r**(-2.0)*RCORE**2.0 + 1.0) + RCORE*RPL**(-2.0)*
-     & ATAN(RCORE/r)/r)/PI - 1.0*G*MCL*RPL**1.0*(r**2.0 + RCORE**2.0)*
+     & ATAN(RCORE/r)/r)/PI - 1.0*GC*MCL*RPL**1.0*(r**2.0 + RCORE**2.0)*
      & (RCORE + RPL)*(RCORE**2.0 - RPL**2.0)**(-2.0)*(-0.5*PI*RCORE*
      & RPL**(-2.0)/r + 0.04167*r**(-3.0)*RCORE**(-2.0)*(-3.0*r**3.0*
      & (PI**2.0-4.0*ATAN(r/RCORE)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*
@@ -244,7 +244,7 @@ C***********************************************************************
      & LOG(r**2.0/(r**2.0 + RCORE**2.0)) - 0.0167*RCORE**(-2.0)*
      & LOG(r**(-2.0)*RCORE**2.0 + 1.0) - 0.667*RPL**(-2.0)*
      & LOG(r**(-2.0)*RCORE**2.0 + 1.0) + RCORE*RPL**(-2.0)*
-     & ATAN(RCORE/r)/r)/PI - G*MCL*(r**2.0 + RCORE**2.0)*(r**2.0 + 
+     & ATAN(RCORE/r)/r)/PI - GC*MCL*(r**2.0 + RCORE**2.0)*(r**2.0 + 
      & RPL**2.0)*(RCORE + RPL)*(RCORE**2.0 - RPL**2.0)**(-2.0)*
      & (1.0*PI*RCORE*RPL**(-3.0)/r - 0.0833*r**(-3.0)*RPL**(-3.0)*
      & (-3.0*r**3.0*(PI**2.0 - 4.0*ATAN(r/RPL)**2.0) + 16.0*r**3.0*
@@ -257,7 +257,7 @@ C***********************************************************************
      & 2.0*RPL**2.0)/(r*(1 + RPL**2/r**2))) + 4.0*(-6.0*r**2.0 +
      & 2.0*RPL**2.0)*ATAN(RPL/r)) + 1.333*RPL**(-3.0)*LOG(r**(-2.0)*
      & RCORE**2.0+1.0) - 2.0*RCORE*RPL**(-3.0)*ATAN(RCORE/r)/r)/(2*PI) -
-     & G*MCL*(r**2.0 +RCORE**2.0)*(r**2.0 + RPL**2.0)*(RCORE**2.0 -
+     & GC*MCL*(r**2.0 +RCORE**2.0)*(r**2.0 + RPL**2.0)*(RCORE**2.0 -
      & RPL**2.0)**(-2.0)*(-0.5*PI*RCORE*RPL**(-2.0)/r + 0.04167*
      & r**(-3.0)*RCORE**(-2.0)*(-3.0*r**3.0*(PI**2.0 - 4.0*
      & ATAN(r/RCORE)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*RCORE**2.0 + 1.0)
@@ -270,7 +270,7 @@ C***********************************************************************
      & r**(-2.0) + 0.5*RCORE**(-2.0)*LOG(r**2.0/(r**2.0 + RCORE**2.0)) -
      & 0.0167*RCORE**(-2.0)*LOG(r**(-2.0)*RCORE**2.0 + 1.0) - 0.667*
      & RPL**(-2.0)*LOG(r**(-2.0)*RCORE**2.0 + 1.0) + RCORE*RPL**(-2.0)*
-     & ATAN(RCORE/r)/r)/(2*PI))/(G*MCL*(r**2.0 + RCORE**2.0)*(r**2.0 + 
+     & ATAN(RCORE/r)/r)/(2*PI))/(GC*MCL*(r**2.0 + RCORE**2.0)*(r**2.0 +
      & RPL**2.0)*(RCORE + RPL)*(-0.5*PI*RCORE*RPL**(-2.0)/r + 0.04167*
      & r**(-3.0)*RCORE**(-2.0)*(-3.0*r**3.0*(PI**2.0 - 4.0*
      & ATAN(r/RCORE)**2.0) + 16.0*r**3.0*LOG(r**(-2.0)*RCORE**2.0 + 1.0)
@@ -282,7 +282,7 @@ C***********************************************************************
      & ATAN(RPL/r))) + 0.0167*r**(-3.0)*(PI*RCORE + r - 2.0*RCORE*
      & ATAN(RCORE/r)) + 0.5*r**(-2.0) + 0.5*RCORE**(-2.0)*LOG(r**2.0/
      & (r**2.0 + RCORE**2.0)) - 0.0167*RCORE**(-2.0)*LOG(r**(-2.0)*
-     & RCORE**2.0 + 1.0) - 0.667*RPL**(-2.0)*LOG(r**(-2.0)*RCORE**2.0 + 
+     & RCORE**2.0 + 1.0) - 0.667*RPL**(-2.0)*LOG(r**(-2.0)*RCORE**2.0 +
      & 1.0) + RCORE*RPL**(-2.0)*ATAN(RCORE/r)/r))
 
       RETURN
@@ -300,7 +300,7 @@ C***********************************************************************
       COMMON/galaxy/MCL,RPL,RCORE
       REAL*8 r
 
-      sigma_far = (6.*G*MCL*(r**2. + RPL**2.)*(r**2. + RCORE**2.)*
+      sigma_far = (6.*GC*MCL*(r**2. + RPL**2.)*(r**2. + RCORE**2.)*
      &               (PI*(RPL-RCORE))**(-1.)*
      &               (PI**2./(8.*RPL**4.) +
      &                PI/(6.*RPL*r**3.) + 
@@ -328,7 +328,7 @@ C***********************************************************************
       COMMON/galaxy/MCL,RPL,RCORE
       REAL*8 r
 
-      dsigfar_drh = 2.449*(PI*(-RCORE + RPL))*SQRT(G*MCL*(PI*
+      dsigfar_drh = 2.449*(PI*(-RCORE + RPL))*SQRT(GC*MCL*(PI*
      & (-RCORE + RPL))**(-1.0)*(r**2.0 + RCORE**2.0)*(r**2.0 + 
      & RPL**2.0)*(-0.1667*PI*r**(-3.0)*RCORE*RPL**(-5.0)*
      & (-3.0*r**2.0*RPL + 3.0*r**3.0*ATAN(RPL/r) + RPL**3.0) +0.1667*PI*
@@ -336,14 +336,14 @@ C***********************************************************************
      & -0.3333*r**(-3.0)*ATAN(RPL/r)/RPL + 0.1667*
      & r**(-2.0)*RPL**(-2.0) - 0.6667*RPL**(-4.0)*LOG(r**(-2.0)*RPL**2.0
      & + 1.0) - 0.5*RPL**(-4.0)*ATAN(r/RPL)**2.0 + RPL**(-3.0)*
-     & ATAN(RPL/r)/r))*(G*MCL*RPL**1.0*(PI*(-RCORE + RPL))**(-1.0)*
+     & ATAN(RPL/r)/r))*(GC*MCL*RPL**1.0*(PI*(-RCORE + RPL))**(-1.0)*
      & (r**2.0 + RCORE**2.0)*(-0.1667*PI*r**(-3.0)*RCORE*RPL**(-5.0)*
      & (-3.0*r**2.0*RPL + 3.0*r**3.0*ATAN(RPL/r) + RPL**3.0) + 0.1667*
      & PI*r**(-3.0)/RPL - 0.5*PI*RPL**(-3.0)/r + 0.125*PI**2.0*
      & RPL**(-4.0) - 0.3333*r**(-3.0)*ATAN(RPL/r)/RPL + 0.1667*
      & r**(-2.0)*RPL**(-2.0) - 0.6667*RPL**(-4.0)*LOG(r**(-2.0)
      & *RPL**2.0 + 1.0) - 0.5*RPL**(-4.0)*ATAN(r/RPL)**2.0 +
-     & RPL**(-3.0)*ATAN(RPL/r)/r) + G*MCL*(PI*(-RCORE + RPL))**(-1.0)*
+     & RPL**(-3.0)*ATAN(RPL/r)/r) + GC*MCL*(PI*(-RCORE + RPL))**(-1.0)*
      & (r**2.0 + RCORE**2.0)*(r**2.0 + RPL**2.0)*(0.8333*PI*r**(-3.0)*
      & RCORE*RPL**(-6.0)*(-3.0*r**2.0*RPL + 3.0*r**3.0*ATAN(RPL/r) +
      & RPL**3.0) - 0.1667*PI*r**(-3.0)*RCORE*RPL**(-5.0)*(-3.0*r**2.0 +
@@ -355,7 +355,7 @@ C***********************************************************************
      & 1.0) + 1.0*r*RPL**(-6.0)*ATAN(r/RPL)**1.0/(r**2/RPL**2 + 1) +
      & 2.667*RPL**(-5.0)*LOG(r**(-2.0)*RPL**2.0 + 1.0) + 2.0*RPL**(-5.0)
      & *ATAN(r/RPL)**2.0 - 3.0*RPL**(-4.0)*ATAN(RPL/r)/r + RPL**(-3.0)/
-     & (r**2*(1 + RPL**2/r**2)))/2 - 0.5*G*MCL*(PI*(-RCORE +
+     & (r**2*(1 + RPL**2/r**2)))/2 - 0.5*GC*MCL*(PI*(-RCORE +
      & RPL))**(-1.0)*(r**2.0 + RCORE**2.0)*(r**2.0 + RPL**2.0)*(-0.1667*
      & PI*r**(-3.0)*RCORE*RPL**(-5.0)*(-3.0*r**2.0*RPL + 3.0*r**3.0*
      & ATAN(RPL/r) + RPL**3.0) + 0.1667*PI*r**(-3.0)/RPL - 0.5*PI*
@@ -363,7 +363,7 @@ C***********************************************************************
      & ATAN(RPL/r)/RPL + 0.1667*r**(-2.0)*RPL**(-2.0) - 0.667*
      & RPL**(-4.0)*LOG(r**(-2.0)*RPL**2.0 + 1.0) - 0.5*RPL**(-4.0)*
      & ATAN(r/RPL)**2.0 + RPL**(-3.0)*ATAN(RPL/r)/r)/(-RCORE + RPL)) /
-     & (G*MCL*(r**2.0 + RCORE**2.0)*(r**2.0 + RPL**2.0)*(-0.1667*PI*
+     & (GC*MCL*(r**2.0 + RCORE**2.0)*(r**2.0 + RPL**2.0)*(-0.1667*PI*
      & r**(-3.0)*RCORE*RPL**(-5.0)*(-3.0*r**2.0*RPL + 3.0*r**3.0*
      & ATAN(RPL/r) + RPL**3.0) + 0.1667*PI*r**(-3.0)/RPL - 0.5*PI*
      & RPL**(-3.0)/r + 0.125*PI**2.0*RPL**(-4.0)
@@ -387,10 +387,10 @@ C***********************************************************************
       REAL*8 rc_test, fn, df
 
       fn = pe - pe_func(rc_test)
-      df = -(-G*MCL**2./(PI*(RPL-rc_test)**2.)*(LOG(4.) - 
+      df = -(-GC*MCL**2./(PI*(RPL-rc_test)**2.)*(LOG(4.) - 
      &       2*LOG(1.+RPL/rc_test) + 2*RPL/(rc_test+RPL)-
      &       2/(1.+rc_test/RPL)) - 
-     &       2*G*MCL**2./(PI*(RPL-rc_test)**3.)*(rc_test*LOG(4.) +
+     &       2*GC*MCL**2./(PI*(RPL-rc_test)**3.)*(rc_test*LOG(4.) +
      &       RPL*LOG(4.) - 2*rc_test*LOG(1.+RPL/rc_test)-
      &       2*RPL*LOG(1.+rc_test/RPL)))
 
