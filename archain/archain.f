@@ -81,13 +81,14 @@ C       for tidal mass gain
         WRITE(*,*)
 
         MASS=0.0
+        VBH = 0.0
         DO I=1,NA
             L=3*(I-1)
             READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
 
             RGAL = sqrt(XA(L+1)**2+XA(L+2)**2+XA(L+3)**2)
             IF (RGAL>0) THEN
-                VBH = sqrt(0.0043*GALMASS(RGAL)/RGAL)
+                VBH = sqrt((GALMASS(RGAL)+MA(2))/RGAL)
             ELSE
                 VBH = 0.0
             END IF
@@ -99,9 +100,9 @@ C       for tidal mass gain
             WRITE(*,*) RGAL, VBH
 
             MASS=MASS+MA(I)
-            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
-            VA(L+2) = VA(L+2)*14.90763847
-            VA(L+3) = VA(L+3)*14.90763847
+C            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
+C            VA(L+2) = VA(L+2)*14.90763847
+C            VA(L+3) = VA(L+3)*14.90763847
             index4output(I)=I  ! initialize output index (to be modified in case of merger)
         END DO
 
