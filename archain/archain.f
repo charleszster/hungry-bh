@@ -130,12 +130,12 @@ C            VA(L+3) = VA(L+3)*14.90763847
         DO I=1,N
             L=3*(I-1)
             MA(I)=M(I)
-            XA(L+1) = X(L+1)+CMXX(1)+CMXA(1)
-            XA(L+2) = X(L+2)+CMXX(2)+CMXA(2)
-            XA(L+3) = X(L+3)+CMXX(3)+CMXA(3)
-            VA(L+1) = V(L+1)+CMVX(1)+CMVA(1)
-            VA(L+2) = V(L+2)+CMVX(2)+CMVA(2)
-            VA(L+3) = V(L+3)+CMVX(3)+CMVA(3)
+            XA(L+1) = X(L+1)+CMXA(1)
+            XA(L+2) = X(L+2)+CMXA(2)
+            XA(L+3) = X(L+3)+CMXA(3)
+            VA(L+1) = V(L+1)+CMVA(1)
+            VA(L+2) = V(L+2)+CMVA(2)
+            VA(L+3) = V(L+3)+CMVA(3)
 
         END DO
 
@@ -151,6 +151,12 @@ C            VA(L+3) = VA(L+3)*14.90763847
 
 100     CONTINUE
 
+C       ADDING NEW BHS
+C       UPDATING THE POT
+C       UPDATE BH MASS
+C       ADD NEW INFALLING BH (NA -> NA + 1, N -> N + 1, NBH -> NBH + 1, XA(NA) = ... )
+
+
         MASS=0.0
         DO J=1,N
             I = index4output(J)
@@ -161,6 +167,7 @@ C       Include diffusion through encounters with stars
 C        CALL DIFFUSION(DELT)
         NEWREG = .true.
 
+        TMYR = TIME*14.90763847
 
         TIME1 = TIME
         CALL CHAINEVOLVE
@@ -974,7 +981,9 @@ C           Calculate energy change and test for too large kicks
 
             DELTAE = DELTAE-0.5*MA(I)*VBH*VBH
 *
-            DELTAW = DELTAW + DELTAE !Sum up work done by diffusion
+C            IF (RGAL.LE.RCORE) THEN
+                DELTAW = DELTAW + DELTAE !Sum up work done by diffusion
+C            END IF
 *
             VA(3*I-2) = VX
             VA(3*I-1) = VY
@@ -1432,6 +1441,8 @@ C           step=0
         stw=stimex
         step=min(abs(step),2*abs(stimex))
         stimex=0
+
+
 777     KSTEPS=KSTEPS+1
         CALL Take Y from XC WC (Y,Nvar)
         CALL Obtain Order of Y(SY)
@@ -1463,6 +1474,9 @@ C           step=0
         DLT=DELTAT! for short
         IF(CHTIME.LT.DLT.AND.(KSTEPS.LT.KSMX)
      &  .AND.(icollision.EQ.0))goto 777
+
+
+
         IF(KSTEPS.LT.KSMX .AND.Ixc.GT.0.AND.icollision.EQ.0)THEN
         ! Integrate TO approximate EXACT OUTPUTTIME
             IF(Ixc.EQ.1)THEN ! approx outputtime with Stumpff-Weiss-priciple
