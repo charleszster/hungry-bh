@@ -2,7 +2,8 @@
       PARAMETER (NMX=200,NMX2=2*NMX,NMX3=3*NMX,NMX4=4*NMX,                    
      &NMX8=8*NMX,NMXm=NMX*(NMX-1)/2)                                         
       PARAMETER (MSTAR=0.45, PI=3.141592653589793)
-      PARAMETER(GC=1.0)	!Stand-in for G in SO_params.f
+      PARAMETER(GC=1.0, GC_real=0.0043009211)
+      PARAMETER(t0=1.5653765d+03) !Myr
 
 C*********Parameters used for calculating the central black hole mass (mbch*), galaxy scale mass (mg*) and stellar mass (sm*) for GALAXY 1
       PARAMETER(mbch1=9.75351764, mbch2=-0.59220731)

@@ -1,5 +1,5 @@
-#! /Users/chaz/anaconda/bin/python	#Mac
-##! /home/charles/anaconda/bin/python	#Linux
+#! /home/charles/anaconda/bin/python
+##! /Users/chaz/anaconda/bin/python	#Mac
 
 import numpy as np
 import sympy as sp
@@ -47,11 +47,11 @@ def test_dsigs_drh(r, rh, rc, G, Mtot, sigma_near, sigma_far):
     plt.show()
 
 def run():
-    '''
-    G = sp.Symbol('G')
-    Mtot = sp.Symbol('Mtot')
-    rh = sp.Symbol('rh')
-    rc = sp.Symbol('rc')
+
+    GC_real = sp.Symbol('GC_real')
+    MCL = sp.Symbol('MCL')
+    RPL = sp.Symbol('RPL')
+    RCORE = sp.Symbol('RCORE')
     r = sp.Symbol('r')
     pie = sp.Symbol('pi')
 
@@ -59,8 +59,8 @@ def run():
     lahg = sp.log
     squirt = sp.sqrt
     init_guess = 0.
-    dsig_drh = sp.diff(sig_eq.get_sigma_near(rh, r, rc, G, Mtot, init_guess, arktan, lahg, squirt, pie), r)
-    print dsig_drh
+    dsig_drh = sp.diff(sig_eq.get_sigma_near(RPL, r, RCORE, GC_real, MCL, init_guess, arktan, lahg, squirt, pie), RPL)
+    print(dsig_drh)
     '''
     arktan = np.arctan
     lahg = np.log
@@ -82,6 +82,6 @@ def run():
     sigma_near = sig_eq.get_sigma_near(rh, r, rc, G, Mtot, init_guess, arktan, lahg, squirt, pie)
     sigma_far =  sig_eq.get_sigma_far(rh, r, rc, G, Mtot, init_guess, arktan, lahg, squirt, pie)
     test_dsigs_drh(r, rh, rc, G, Mtot, sigma_near, sigma_far)
-
+    '''
 if __name__ == '__main__':
     run()

@@ -6,7 +6,7 @@
 *       by Seppo Mikkola
 *
 ************************************************************
-
+C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
 
         PROGRAM ARCHAIN
 
@@ -15,7 +15,7 @@
         COMMON/justforfun/Tkin,Upot,dSkin,dSpot
         COMMON/outputindex/index4output(200)
         COMMON/collision/icollision,ione,itwo,iwarning
-        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
      &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX)
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
@@ -46,15 +46,16 @@
 *       Read input values from STDIN
         READ(5,*,err=999)OUTNAME,N,Nbh,DELTAT,TMAX, DTOUT
         READ(5,*,err=999)IWR,soft,cmet, Clight,Ixc ,spin,tolerance
-        READ(5,*,err=999)MCL,RPL,RCORE,GTYPE
+        READ(5,*,err=999)RPL,RCORE,GTYPE
+C        READ(5,*,err=999)MCL,RPL,RCORE,GTYPE  !MCL used to be read in from test.in as 1.e6. galaxy_mass function is now used in main loop.
 
 *       Initialize variables
+        TIME=t0/14.90763847
         TMAX = TMAX/14.90763847 ! Scaling from pc, Myr, Msun to Nbody units
         DELTAT = DELTAT/14.90763847
         IF (N.LT.2) STOP
         NA = N
         icollision=0
-        TIME=0.0
         ee=soft**2 ! square of soft(ening)
         EPS=tolerance
         ENER0=0
@@ -85,10 +86,12 @@ C       for tidal mass gain
         DO I=1,NA
             L=3*(I-1)
             READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
-
+        END DO
+        DO I=1,NA
+            L=3*(I-1)
             RGAL = sqrt(XA(L+1)**2+XA(L+2)**2+XA(L+3)**2)
             IF (RGAL>0) THEN
-                VBH = sqrt((GALMASS(RGAL)+MA(2))/RGAL)
+                VBH = sqrt((GALMASS(RGAL)+MA(1))/RGAL)
             ELSE
                 VBH = 0.0
             END IF
@@ -151,6 +154,15 @@ C            VA(L+3) = VA(L+3)*14.90763847
 
 100     CONTINUE
 
+        TMYR = TIME*14.90763847
+        MCL = galaxy_mass(TMYR)
+        eff_rad = get_eff_rad(TMYR)
+        sigma_faber = get_sigma_faber(TMYR)
+        write(*,*)MCL, eff_rad, sigma_faber
+        CALL find_RPL_newt(RPL)
+        stop
+
+
 C       ADDING NEW BHS
 C       UPDATING THE POT
 C       UPDATE BH MASS
@@ -167,7 +179,6 @@ C       Include diffusion through encounters with stars
 C        CALL DIFFUSION(DELT)
         NEWREG = .true.
 
-        TMYR = TIME*14.90763847
 
         TIME1 = TIME
         CALL CHAINEVOLVE
@@ -763,7 +774,7 @@ C        WRITE(*,*) "VPAR: ", VPAR
         SUBROUTINE COORDINATE DEPENDENT PERTURBATIONS(ACC) ! USER DEFINED
 
         INCLUDE 'archain.h'
-        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
         REAL*8 ACC(*)
         REAL*8 RGAL2, ACCEL
         SAVE
@@ -869,7 +880,7 @@ C       Relativistic accelerations
 C       Calculate diffusion coefficients assuming velocity isotropy
 
         INCLUDE 'archain.h'
-        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
         COMMON/outputindex/index4output(200)
         REAL*8 ERF_NR, ERF_TEMP, FP, FBOT
         REAL*8 DVP, DVP2, DVBOT2, GAUSS
@@ -1008,7 +1019,7 @@ C       Change scale radius of Plummer sphere based on energy change
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
         PARAMETER (MSTAR=0.45, PI=3.141592653589793)
-        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
         REAL*8 R
 
         !ADD GTYPE DISTINCTION HERE
@@ -1034,7 +1045,7 @@ C       Change scale radius of Plummer sphere based on energy change
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
         PARAMETER (MSTAR=0.45, PI=3.141592653589793)
-        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
         REAL*8 R
 
         !ADD GTYPE DISTINCTION HERE
@@ -1057,7 +1068,7 @@ C       Change scale radius of Plummer sphere based on energy change
         REAL*8 FUNCTION GALSIG(R)
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
-        COMMON/galaxy/MCL,RPL,RCORE,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
         REAL*8 R, r_lim
 
         !ADD GTYPE DISTINCTION HERE
