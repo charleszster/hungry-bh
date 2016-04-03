@@ -15,7 +15,7 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         COMMON/justforfun/Tkin,Upot,dSkin,dSpot
         COMMON/outputindex/index4output(200)
         COMMON/collision/icollision,ione,itwo,iwarning
-        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
      &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX)
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
@@ -100,7 +100,7 @@ C       for tidal mass gain
             VA(L+2) = VBH
             VA(L+3) = 0.0
 
-            WRITE(*,*) RGAL, VBH
+C            WRITE(*,*) RGAL, VBH
 
             MASS=MASS+MA(I)
 C            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
@@ -145,6 +145,15 @@ C            VA(L+3) = VA(L+3)*14.90763847
         DELT = 0.0
         NEWREG = .true.
 
+        TMYR = TIME*14.90763847
+        MCL = galaxy_mass(TMYR)
+        eff_rad = get_eff_rad(TMYR)
+        sigma_faber = get_sigma_faber(TMYR)
+        CALL find_RPL_newt(RPL)
+        pe = pe_func(RCORE)
+        write(*,*)MCL, eff_rad, sigma_faber, RPL
+C        STOP
+
         GOTO 200
 
 
@@ -153,15 +162,6 @@ C            VA(L+3) = VA(L+3)*14.90763847
 *************************
 
 100     CONTINUE
-
-        TMYR = TIME*14.90763847
-        MCL = galaxy_mass(TMYR)
-        eff_rad = get_eff_rad(TMYR)
-        sigma_faber = get_sigma_faber(TMYR)
-        write(*,*)MCL, eff_rad, sigma_faber
-        CALL find_RPL_newt(RPL)
-        stop
-
 
 C       ADDING NEW BHS
 C       UPDATING THE POT
@@ -176,7 +176,7 @@ C       ADD NEW INFALLING BH (NA -> NA + 1, N -> N + 1, NBH -> NBH + 1, XA(NA) =
         END DO
 
 C       Include diffusion through encounters with stars
-C        CALL DIFFUSION(DELT)
+        CALL DIFFUSION(DELT)
         NEWREG = .true.
 
 
@@ -218,7 +218,6 @@ C        CALL DIFFUSION(DELT)
      &   '   CMX=',1p,g10.2,
      &   '   CMXA=',1p,g10.2)
 
-
 200     CONTINUE
 
 
@@ -237,6 +236,10 @@ C  short output to save space
 234     FORMAT(1x,f18.6,1p,600g13.5)
 
         IF(TIME.LT.TMAX)THEN
+            TMYR = TIME*14.90763847
+            MCL = galaxy_mass(TMYR)
+            eff_rad = get_eff_rad(TMYR)
+            CALL find_RPL_newt(RPL)
             GOTO 100
         ELSE
             GOTO 666
@@ -774,7 +777,7 @@ C        WRITE(*,*) "VPAR: ", VPAR
         SUBROUTINE COORDINATE DEPENDENT PERTURBATIONS(ACC) ! USER DEFINED
 
         INCLUDE 'archain.h'
-        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 ACC(*)
         REAL*8 RGAL2, ACCEL
         SAVE
@@ -880,7 +883,7 @@ C       Relativistic accelerations
 C       Calculate diffusion coefficients assuming velocity isotropy
 
         INCLUDE 'archain.h'
-        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         COMMON/outputindex/index4output(200)
         REAL*8 ERF_NR, ERF_TEMP, FP, FBOT
         REAL*8 DVP, DVP2, DVBOT2, GAUSS
@@ -992,9 +995,9 @@ C           Calculate energy change and test for too large kicks
 
             DELTAE = DELTAE-0.5*MA(I)*VBH*VBH
 *
-C            IF (RGAL.LE.RCORE) THEN
+            IF (RGAL.LE.RCORE) THEN
                 DELTAW = DELTAW + DELTAE !Sum up work done by diffusion
-C            END IF
+            END IF
 *
             VA(3*I-2) = VX
             VA(3*I-1) = VY
@@ -1004,7 +1007,17 @@ C            END IF
 
 C       Change scale radius of Plummer sphere based on energy change
         DELTAW = -2.0*DELTAW
-        RPL = 1.0/(1.0/RPL+3.3953054526*DELTAW/(MCL*MCL))
+        IF(GTYPE.EQ.1) THEN
+          IF(RGAL.LT.RCORE) THEN
+              write(*,*)RGAL,RCORE
+              pe = pe - DELTAW
+              low_RCORE = RCORE/2.
+              high_RCORE = RCORE*2.
+              CALL find_rc_newt(low_RCORE, high_RCORE, RCORE)
+          END IF
+        ELSE
+          RPL = 1.0/(1.0/RPL+3.3953054526*DELTAW/(MCL*MCL))
+        ENDIF
 
         RETURN
 
@@ -1019,7 +1032,7 @@ C       Change scale radius of Plummer sphere based on energy change
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
         PARAMETER (MSTAR=0.45, PI=3.141592653589793)
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 R
 
         !ADD GTYPE DISTINCTION HERE
@@ -1045,7 +1058,7 @@ C       Change scale radius of Plummer sphere based on energy change
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
         PARAMETER (MSTAR=0.45, PI=3.141592653589793)
-        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 R
 
         !ADD GTYPE DISTINCTION HERE
@@ -1068,16 +1081,16 @@ C       Change scale radius of Plummer sphere based on energy change
         REAL*8 FUNCTION GALSIG(R)
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
-        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 R, r_lim
 
         !ADD GTYPE DISTINCTION HERE
         IF (GTYPE.EQ.1) THEN
             r_lim = sqrt(RCORE*RPL)
             IF (R.LE.r_lim) THEN
-                GALSIG = sigma_near(R)
+                GALSIG = sigma_near(R)*14.90763847
             ELSE
-                GALSIG = sigma_far(R)
+                GALSIG = sigma_far(R)*14.90763847
             END IF
         ELSE
             GALSIG = MCL/(2.0*RPL)*

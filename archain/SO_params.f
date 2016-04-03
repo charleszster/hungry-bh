@@ -6,7 +6,7 @@ C
 C
 C***********************************************************************
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 rc_local
 
       pe_func = -GC*MCL**2./(PI*(RPL-rc_local)**2.)*
@@ -24,7 +24,7 @@ C
 C
 C***********************************************************************
 C      INCLUDE 'archain.h'
-C        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+C        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
 
 C      SO_RPL = rs*(0.6082 - 0.1843*LOG(concentration()) -
 C     &      0.1011*(LOG(concentration())**2.) +
@@ -40,7 +40,7 @@ C
 C
 C***********************************************************************
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
 
 
       rho_c = MCL*(RPL+RCORE)/(2.*PI**2.*RCORE**2.*RPL**2.)
@@ -56,7 +56,7 @@ C
 C***********************************************************************
 
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
       SO_rho = rho_c/((1+r**2/RCORE**2)*(1+r**2/RPL**2))
       RETURN
@@ -71,7 +71,7 @@ C
 C***********************************************************************
 
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
 
       SO_r_ddot = 4*PI*GC*rho_c()*RCORE**2.*RPL**2.*
@@ -92,7 +92,7 @@ C
 C***********************************************************************
 
 C      INCLUDE 'archain.h'
-C       COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+C       COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
 C      REAL*8 r, r_dot
 C      INTEGER i
 
@@ -140,7 +140,7 @@ C
 C***********************************************************************
 
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
 
       Yrhrc = 1./(2.*r**2.) + LOG(r**2./(r**2. + RCORE**2.))/
@@ -157,7 +157,7 @@ C
 C***********************************************************************
 
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
 
       Yrcrh = (PI*RCORE + r - 2.*RCORE*ATAN(RCORE/r))/(6.*r**3.) -
@@ -178,7 +178,7 @@ C
 C***********************************************************************
 
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r, vr2so
 
       vr2so = -4.*PI*GC_real*rho_c()*RCORE**2.*RPL**2.*
@@ -199,7 +199,7 @@ C
 C***********************************************************************
 
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
 
       dsignear_dRPL = -2.449*PI*SQRT(-GC_real*MCL*(RCORE + RPL)*
@@ -380,7 +380,7 @@ C
 C***********************************************************************
 
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
       sigma_far = (6.*GC_real*MCL*(r**2. + RPL**2.)*(r**2. + RCORE**2.)*
      &               (PI*(RPL-RCORE))**(-1.)*
@@ -407,7 +407,7 @@ C
 C***********************************************************************
 
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
 
       dsigfar_dRPL = 2.449*(PI*(-RCORE + RPL))*SQRT(GC_real*MCL*(PI*
@@ -465,7 +465,7 @@ C
 C
 C***********************************************************************
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 rc_test, fn, df
 
       fn = pe - pe_func(rc_test)
@@ -503,7 +503,7 @@ C***********************************************************************
           IF((x1 - rc_next)*(rc_next - x2) .LT. 0.) THEN
 C               write(*,*) MCL,rs,pe, f, df, dx
                WRITE(*,*) 'find_rc_newt jumped out of brackets'
-C               READ(*,*)
+               STOP
           ENDIF
           IF(abs(rc_next/rc0-1.) .LT. tol) THEN
               RETURN
@@ -512,7 +512,7 @@ C               READ(*,*)
           ENDIF
  11   CONTINUE
       WRITE(*,*) 'find_rc_newt exceeded maximum iterations'
-C      READ(*,*)
+      STOP
       END
 
 C***********************************************************************
@@ -523,12 +523,11 @@ C
 C
 C***********************************************************************
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 f, df, sigma_faber
 
       sigma_faber = get_sigma_faber(TMYR)
       IF(eff_rad .GE. SQRT(RCORE*RPL)) THEN
-          write(*,*)'used sigma_far'
           f = sigma_far(eff_rad) - sigma_faber
           df = dsigfar_dRPL(eff_rad)
       ELSE
@@ -545,7 +544,7 @@ C
 C
 C***********************************************************************
       INCLUDE 'archain.h'
-      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,GTYPE
+      COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       INTEGER JMAX, j
       REAL*8 RPL_curr, RPL_next, tol, sigma_faber
       EXTERNAL RPL_funcd
@@ -559,8 +558,8 @@ C***********************************************************************
           CALL RPL_funcd(f, df)
           dx = f/df
           RPL_next = RPL_curr - dx
-          write(*,*)f+sigma_faber,df,dx,RPL_curr,RPL_next,
-     &              RPL_next/RPL_curr - 1.
+C          write(*,*)f+sigma_faber,df,dx,RPL_curr,RPL_next,
+C     &              RPL_next/RPL_curr - 1.
           IF(ABS(RPL_next/RPL_curr - 1.) .LE. tol) THEN
               RETURN
           ELSE
