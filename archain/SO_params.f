@@ -501,7 +501,7 @@ C***********************************************************************
           dx = f/df
           rc_next = rc0 - dx
           IF((x1 - rc_next)*(rc_next - x2) .LT. 0.) THEN
-C               write(*,*) MCL,rs,pe, f, df, dx
+               write(*,*) rc_next
                WRITE(*,*) 'find_rc_newt jumped out of brackets'
                STOP
           ENDIF
@@ -552,6 +552,7 @@ C***********************************************************************
       REAL*8 f, df, dx
 
       sigma_faber = get_sigma_faber(TMYR)
+      write(*,*)sigma_faber
       tol = 0.001
       RPL_curr = RPL_next
       DO 12 j=1,JMAX

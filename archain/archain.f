@@ -148,10 +148,9 @@ C            VA(L+3) = VA(L+3)*14.90763847
         TMYR = TIME*14.90763847
         MCL = galaxy_mass(TMYR)
         eff_rad = get_eff_rad(TMYR)
-        sigma_faber = get_sigma_faber(TMYR)
+C        sigma_faber = get_sigma_faber(TMYR)
         CALL find_RPL_newt(RPL)
         pe = pe_func(RCORE)
-        write(*,*)MCL, eff_rad, sigma_faber, RPL
 C        STOP
 
         GOTO 200
@@ -240,6 +239,7 @@ C  short output to save space
             MCL = galaxy_mass(TMYR)
             eff_rad = get_eff_rad(TMYR)
             CALL find_RPL_newt(RPL)
+            write(*,*)eff_rad
             GOTO 100
         ELSE
             GOTO 666
@@ -897,7 +897,11 @@ C       Calculate diffusion coefficients assuming velocity isotropy
         SAVE
 
         DELTAW = 0.0
-        GALRH = 1.305*RPL
+        IF(GTYPE.EQ.1) THEN
+          GALRH = RPL
+        ELSE
+          GALRH = 1.305*RPL
+        ENDIF
 
         DO J=1,N
             I = index4output(J)
@@ -1012,7 +1016,7 @@ C       Change scale radius of Plummer sphere based on energy change
               write(*,*)RGAL,RCORE
               pe = pe - DELTAW
               low_RCORE = RCORE/2.
-              high_RCORE = RCORE*2.
+              high_RCORE = RCORE*1.5
               CALL find_rc_newt(low_RCORE, high_RCORE, RCORE)
           END IF
         ELSE
