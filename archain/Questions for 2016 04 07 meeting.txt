@@ -1,0 +1,7 @@
+- central black hole is smaller than guest black holes, at least in the beginning.
+- only way for RCORE newton function to work is by updating potential energy all the time.
+
+Need to:
+- Add black holes at respective infall times and effective radii, with random position and sigma components.
+- need to update mass of central black hole with time.
+- question: if black hole makes it to center (RGAL<=0.2RCORE), what to do with it?
