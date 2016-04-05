@@ -552,7 +552,6 @@ C***********************************************************************
       REAL*8 f, df, dx
 
       sigma_faber = get_sigma_faber(TMYR)
-      write(*,*)sigma_faber
       tol = 0.001
       RPL_curr = RPL_next
       DO 12 j=1,JMAX
