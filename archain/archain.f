@@ -238,7 +238,7 @@ C  short output to save space
             MCL = galaxy_mass(TMYR)
             eff_rad = get_eff_rad(TMYR)
             pe = pe_func(RCORE)
-C            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2)
+            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE
             CALL find_RPL_newt(RPL)
             GOTO 100
         ELSE
@@ -1018,16 +1018,15 @@ C       Change scale radius of Plummer sphere based on energy change
             RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1))**2+(XA(3*I))**2+4.0*
      &                  RS*RS)
             IF (RGAL.LT.RCORE) THEN
-C                write(*,*)RGAL,RCORE
-                IF (RGAL.LE.RCORE*0.2) THEN
-                  STOP
-                ELSE
-                  pe = pe - DELTAW
-                  low_RCORE = RCORE/2.
-                  high_RCORE = RCORE*1.5
-                  CALL find_rc_newt(low_RCORE, high_RCORE, RCORE)
-                  write(*,*)RGAL, RCORE
-                ENDIF
+              IF (RGAL.LE.RCORE*0.2) THEN
+                STOP
+              ELSE
+                write(*,*) DELTAW
+                pe = pe - DELTAW
+                low_RCORE = RCORE/2.
+                high_RCORE = RCORE*2.
+                CALL find_rc_newt(low_RCORE, high_RCORE, RCORE)
+              ENDIF
             END IF
           ENDDO
         ELSE

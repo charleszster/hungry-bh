@@ -1,5 +1,8 @@
 - central black hole is smaller than guest black holes, at least in the beginning.
 - only way for RCORE newton function to work is by updating potential energy all the time.
+- How do I update the binding potential when RGAL<RCORE?  Do I:
+	1. Update potential only using the potential energy function?, or
+	2. Update potential using potential energy function and subtract DELTAW?
 
 Need to:
 - Add black holes at respective infall times and effective radii, with random position and sigma components.
