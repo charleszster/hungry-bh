@@ -235,10 +235,10 @@ C  short output to save space
 
         IF(TIME.LT.TMAX)THEN
             TMYR = TIME*14.90763847
-            MCL = galaxy_mass(TMYR)
-            eff_rad = get_eff_rad(TMYR)
+C            MCL = galaxy_mass(TMYR)
+C            eff_rad = get_eff_rad(TMYR)
             pe = pe_func(RCORE)
-            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE
+            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE, pe
             CALL find_RPL_newt(RPL)
             GOTO 100
         ELSE
@@ -1012,23 +1012,15 @@ C           Calculate energy change and test for too large kicks
 C       Change scale radius of Plummer sphere based on energy change
         DELTAW = -2.0*DELTAW
         IF (GTYPE.EQ.1) THEN
-          DO J=2,N
-            I = index4output(J)
-            RS=2.d0*(MA(I))/Clight**2 !Softening of order 2xSchwarzschild radius
-            RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1))**2+(XA(3*I))**2+4.0*
-     &                  RS*RS)
-            IF (RGAL.LT.RCORE) THEN
-              IF (RGAL.LE.RCORE*0.2) THEN
-                STOP
-              ELSE
-                write(*,*) DELTAW
-                pe = pe - DELTAW
-                low_RCORE = RCORE/2.
-                high_RCORE = RCORE*2.
-                CALL find_rc_newt(low_RCORE, high_RCORE, RCORE)
-              ENDIF
-            END IF
-          ENDDO
+C          IF (RGAL.LE.RCORE*0.2) THEN
+C            STOP
+C          ELSE
+            write(*,*) DELTAW
+            pe = pe - DELTAW
+            low_RCORE = RCORE/2.
+            high_RCORE = RCORE*2.
+            CALL find_rc_newt(low_RCORE, high_RCORE, RCORE)
+C          ENDIF
         ELSE
           RPL = 1.0/(1.0/RPL+3.3953054526*DELTAW/(MCL*MCL))
         ENDIF
