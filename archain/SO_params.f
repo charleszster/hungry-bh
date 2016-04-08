@@ -172,7 +172,7 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      FUNCTION sigma_near(r)
+      FUNCTION sigma_near(r)    !astrophysical units
 C
 C
 C***********************************************************************
@@ -185,7 +185,7 @@ C***********************************************************************
      &         (r**2. + RPL**2.)*(r**2. + RCORE**2.)*(Yrhrc(r) +
      &         Yr1r1(r, RCORE) + Yr1r1(r, RPL) + Yrcrh(r)) /
      &         (RCORE**2. - RPL**2.)**2.
-      sigma_near = (3.*vr2so)**0.5
+      sigma_near = (vr2so)**0.5
 
       RETURN
       END
@@ -193,7 +193,7 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      FUNCTION dsignear_dRPL(r)
+      FUNCTION dsignear_dRPL(r)    !astrophysical units
 C
 C
 C***********************************************************************
@@ -374,7 +374,7 @@ C     & 1.0) + RCORE*RPL**(-2.0)*ATAN(RCORE/r)/r))
 C***********************************************************************
 C
 C
-      FUNCTION sigma_far(r)
+      FUNCTION sigma_far(r)    !astrophysical units
 C
 C
 C***********************************************************************
@@ -382,7 +382,7 @@ C***********************************************************************
       INCLUDE 'archain.h'
       COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
-      sigma_far = (6.*GC_real*MCL*(r**2. + RPL**2.)*(r**2. + RCORE**2.)*
+      sigma_far = (2.*GC_real*MCL*(r**2. + RPL**2.)*(r**2. + RCORE**2.)*
      &               (PI*(RPL-RCORE))**(-1.)*
      &               (PI**2./(8.*RPL**4.) +
      &                PI/(6.*RPL*r**3.) + 
@@ -401,7 +401,7 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      FUNCTION dsigfar_dRPL(r)
+      FUNCTION dsigfar_dRPL(r)    !astrophysical units
 C
 C
 C***********************************************************************
@@ -548,7 +548,7 @@ C***********************************************************************
       INTEGER JMAX, j
       REAL*8 RPL_curr, RPL_next, tol, sigma_faber
       EXTERNAL RPL_funcd
-      PARAMETER (JMAX=20)
+      PARAMETER (JMAX=50)
       REAL*8 f, df, dx
 
       sigma_faber = get_sigma_faber(TMYR)
