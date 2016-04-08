@@ -518,7 +518,7 @@ C***********************************************************************
 C***********************************************************************
 C
 C
-      SUBROUTINE RPL_funcd(f, df)
+      SUBROUTINE RPL_funcd(f, df, RPL_next)
 C
 C
 C***********************************************************************
@@ -527,7 +527,7 @@ C***********************************************************************
       REAL*8 f, df, sigma_faber
 
       sigma_faber = get_sigma_faber(TMYR)
-      IF(eff_rad .GE. SQRT(RCORE*RPL)) THEN
+      IF(eff_rad .GE. SQRT(RCORE*RPL_next)) THEN
           f = sigma_far(eff_rad) - sigma_faber
           df = dsigfar_dRPL(eff_rad)
       ELSE
@@ -555,7 +555,7 @@ C***********************************************************************
       tol = 0.001
       RPL_curr = RPL_next
       DO 12 j=1,JMAX
-          CALL RPL_funcd(f, df)
+          CALL RPL_funcd(f, df,RPL_next)
           dx = f/df
           RPL_next = RPL_curr - dx
 C          write(*,*)f+sigma_faber,df,dx,RPL_curr,RPL_next,

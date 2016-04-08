@@ -19,7 +19,7 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
      &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX)
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
-        REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT
+        REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT, MCORE
         LOGICAL NEWREG
         CHARACTER*50 OUTFILE, OUTNAME
         CHARACTER*15 OUTTIME
@@ -81,6 +81,16 @@ C       for tidal mass gain
         WRITE(*,*) 'Writing output to: ',OUTFILE
         WRITE(*,*)
 
+        TMYR = TIME*14.90763847
+        MCL = galaxy_mass(TMYR)
+        eff_rad = get_eff_rad(TMYR)
+        RCORE = 100.0
+        CALL find_RPL_newt(RPL)
+        pe = pe_func(RCORE)
+C        WRITE(*,*) pe, RPL, eff_rad, MCL
+C        STOP
+
+
         MASS=0.0
         VBH = 0.0
         DO I=1,NA
@@ -89,25 +99,26 @@ C       for tidal mass gain
         END DO
         DO I=1,NA
             L=3*(I-1)
-            RGAL = sqrt(XA(L+1)**2+XA(L+2)**2+XA(L+3)**2)
-            IF (RGAL>0) THEN
-                VBH = sqrt((GALMASS(RGAL)+MA(1))/RGAL)
-            ELSE
-                VBH = 0.0
-            END IF
+C            RGAL = sqrt(XA(L+1)**2+XA(L+2)**2+XA(L+3)**2)
+C            IF (RGAL>0) THEN
+C                VBH = sqrt((GALMASS(RGAL))/RGAL)/14.90763847
+C            ELSE
+C                VBH = 0.0
+C            END IF
 
-            VA(L+1) = 0.0
-            VA(L+2) = VBH
-            VA(L+3) = 0.0
+C            VA(L+1) = 0.0
+C            VA(L+2) = VBH
+C            VA(L+3) = 0.0
 
 C            WRITE(*,*) RGAL, VBH
 
             MASS=MASS+MA(I)
-C            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
-C            VA(L+2) = VA(L+2)*14.90763847
-C            VA(L+3) = VA(L+3)*14.90763847
+            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
+            VA(L+2) = VA(L+2)*14.90763847
+            VA(L+3) = VA(L+3)*14.90763847
             index4output(I)=I  ! initialize output index (to be modified in case of merger)
         END DO
+
 
         CALL Reduce2cm(xa,ma,NA,cmxa)
         CALL Reduce2cm(va,ma,NA,cmva)
@@ -145,13 +156,6 @@ C            VA(L+3) = VA(L+3)*14.90763847
         DELT = 0.0
         NEWREG = .true.
 
-        TMYR = TIME*14.90763847
-        MCL = galaxy_mass(TMYR)
-        eff_rad = get_eff_rad(TMYR)
-        CALL find_RPL_newt(RPL)
-        pe = pe_func(RCORE)
-C        STOP
-
         GOTO 200
 
 
@@ -161,9 +165,8 @@ C        STOP
 
 100     CONTINUE
 
-C       ADDING NEW BHS
-C       UPDATING THE POT
 C       UPDATE BH MASS
+C       ADDING NEW BHS
 C       ADD NEW INFALLING BH (NA -> NA + 1, N -> N + 1, NBH -> NBH + 1, XA(NA) = ... )
 
 
@@ -225,7 +228,7 @@ C       Include diffusion through encounters with stars
 
 
 C  short output to save space
-        WRITE(66,234) TIME*14.90763847,MCL,RPL,
+        WRITE(66,234) TIME*14.90763847,MCL,RPL,RCORE,
      &    (Ma(k), SQRT(XA(3*k-2)**2+XA(3*k-1)**2
      &                   +XA(3*k)**2), k=1,na)
 
@@ -235,11 +238,13 @@ C  short output to save space
 
         IF(TIME.LT.TMAX)THEN
             TMYR = TIME*14.90763847
-C            MCL = galaxy_mass(TMYR)
-C            eff_rad = get_eff_rad(TMYR)
-            pe = pe_func(RCORE)
-            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE, pe
+            MCL = galaxy_mass(TMYR)
+            eff_rad = get_eff_rad(TMYR)
             CALL find_RPL_newt(RPL)
+            pe = pe_func(RCORE)
+            MCORE = 0.1366197724*RCORE/RPL*MCL
+            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE, pe, RPL
+     &               , MCORE
             GOTO 100
         ELSE
             GOTO 666
@@ -344,7 +349,7 @@ C       ENCOUNTER PROBABILITY COMPUTATION FOR TIDAL MASS GAIN
             RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1))**2
      &                   +(XA(3*I))**2+4.0*RS*RS)
 C           Handle escape of particles -- set escape radius here!
-            IF (RGAL.gt.100000.0) THEN
+            IF (RGAL.gt.1000000.0) THEN
                 CALL ESCAPE(J)
             END IF
 
@@ -917,7 +922,6 @@ C       Calculate diffusion coefficients assuming velocity isotropy
             vy = VA(3*I-1)
             vz = VA(3*I)
 
-
 C           velocity of black hole + velocity dispersion to get mean encounter velocity
             VBH = SQRT(vx**2+vy**2+vz**2) !+SIGMA**2)
 
@@ -1009,18 +1013,15 @@ C           Calculate energy change and test for too large kicks
 *
         END DO
 
+
 C       Change scale radius of Plummer sphere based on energy change
         DELTAW = -2.0*DELTAW
         IF (GTYPE.EQ.1) THEN
-C          IF (RGAL.LE.RCORE*0.2) THEN
-C            STOP
-C          ELSE
-            write(*,*) DELTAW
+C            write(*,*) "DELTAW = ",DELTAW
             pe = pe - DELTAW
             low_RCORE = RCORE/2.
             high_RCORE = RCORE*2.
             CALL find_rc_newt(low_RCORE, high_RCORE, RCORE)
-C          ENDIF
         ELSE
           RPL = 1.0/(1.0/RPL+3.3953054526*DELTAW/(MCL*MCL))
         ENDIF
@@ -1090,11 +1091,10 @@ C          ENDIF
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 R, r_lim
 
-        !ADD GTYPE DISTINCTION HERE
         IF (GTYPE.EQ.1) THEN
             r_lim = sqrt(RCORE*RPL)
             IF (R.LE.r_lim) THEN
-                GALSIG = sigma_near(R)*14.90763847
+                GALSIG = sigma_near(R)*14.90763847 !sigma_near(R) is in astrophysical units, hence transformation to internal units
             ELSE
                 GALSIG = sigma_far(R)*14.90763847
             END IF
