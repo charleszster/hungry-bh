@@ -202,7 +202,7 @@ C***********************************************************************
       COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
 
-      dsignear_dRPL = -2.449*PI*SQRT(-GC_real*MCL*(RCORE + RPL)*
+      dsignear_dRPL = (-2.449*PI*SQRT(-GC_real*MCL*(RCORE + RPL)*
      & (RCORE**2.0 - RPL**2.0)**(-2.0)*(RCORE**2.0 + r**2.0)*(RPL**2.0 +
      & r**2.0)*(0.04166*RCORE**(-2.0)*r**(-3.0)*(-4.0*RCORE*(RCORE*r +
      & RCORE**2.0*PI - 3.0*PI*r**2.0 - (2.0*RCORE**2.0 - 6.0*r**2.0)*
@@ -281,7 +281,7 @@ C***********************************************************************
      & r**3.0*(PI**2.0 - 4.0*ATAN(r/RPL)**2.0) + 16.0*r**3.0*LOG(RPL**
      & 2.0*r**(-2.0) + 1.0)) - 0.6667*RPL**(-2.0)*LOG(RCORE**
      & 2.0*r**(-2.0) + 1.0) + 0.16667*r**(-3.0)*(RCORE*PI -
-     & 2.0*RCORE*ATAN(RCORE/r) + r) + 0.5*r**(-2.0)))
+     & 2.0*RCORE*ATAN(RCORE/r) + r) + 0.5*r**(-2.0))))/sqrt(3.)
 
 C      dsignear_dRPL = -2.449*PI*SQRT(-GC_real*MCL*(r**2.0 + RCORE**2.0)*
 C     & (r**2.0 + RPL**2.0)*(RCORE + RPL)*(RCORE**2.0 - 
@@ -410,7 +410,7 @@ C***********************************************************************
       COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
       REAL*8 r
 
-      dsigfar_dRPL = 2.449*(PI*(-RCORE + RPL))*SQRT(GC_real*MCL*(PI*
+      dsigfar_dRPL = (2.449*(PI*(-RCORE + RPL))*SQRT(GC_real*MCL*(PI*
      & (-RCORE + RPL))**(-1.0)*(r**2.0 + RCORE**2.0)*(r**2.0 + 
      & RPL**2.0)*(-0.1667*PI*r**(-3.0)*RCORE*RPL**(-5.0)*
      & (-3.0*r**2.0*RPL + 3.0*r**3.0*ATAN(RPL/r) + RPL**3.0) +0.1667*PI*
@@ -452,7 +452,7 @@ C***********************************************************************
      & - 0.3333*r**(-3.0)*ATAN(RPL/r)/RPL + 0.1667*
      & r**(-2.0)*RPL**(-2.0) - 0.6667*RPL**(-4.0)*LOG(r**(-2.0)
      & *RPL**2.0 + 1.0) - 0.5*RPL**(-4.0)*ATAN(r/RPL)**2.0 +
-     & RPL**(-3.0)*ATAN(RPL/r)/r))
+     & RPL**(-3.0)*ATAN(RPL/r)/r)))/sqrt(3.)
 
       RETURN
       END
@@ -555,7 +555,7 @@ C***********************************************************************
       tol = 0.001
       RPL_curr = RPL_next
       DO 12 j=1,JMAX
-          CALL RPL_funcd(f, df,RPL_next)
+          CALL RPL_funcd(f, df, RPL_next)
           dx = f/df
           RPL_next = RPL_curr - dx
 C          write(*,*)f+sigma_faber,df,dx,RPL_curr,RPL_next,
