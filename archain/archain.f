@@ -405,7 +405,7 @@ C       Check for collisions between all particles
                 RS=2.d0*(m(i)+m(j))/CL**2
                 RIJ2=dx(1)**2+dx(2)**2+dx(3)**2
                 rij=sqrt(rij2)
-                test= 10000.0*RS!4*RS !Collision Criterium
+                test= 4.0*RS!4*RS !Collision Criterium
                 IF(rij.LT.test.AND.iwarning.LT.2)
      &  WRITE(6,*)' Near collision: r/RS',rij/RS,i,j,m(i),m(j)
      &  ,sqrt(vij2)/cl
