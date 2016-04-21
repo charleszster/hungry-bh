@@ -19,7 +19,7 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
      &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX)
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
-        REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT, MCORE
+        REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT, MCORE,Mold,deltaM
         LOGICAL NEWREG
         CHARACTER*50 OUTFILE, OUTNAME
         CHARACTER*15 OUTTIME
@@ -84,7 +84,6 @@ C       for tidal mass gain
         TMYR = TIME*14.90763847
         MCL = galaxy_mass(TMYR)
         eff_rad = get_eff_rad(TMYR)
-        RCORE = 100.0
         CALL find_RPL_newt(RPL)
         pe = pe_func(RCORE)
 C        WRITE(*,*) pe, RPL, eff_rad, MCL
@@ -97,25 +96,29 @@ C        STOP
             L=3*(I-1)
             READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
         END DO
+        MA(1) = cbhm(TMYR)	!THIS IS THE MASS OF THE CENTRAL BLACK HOLE THAT IS GOING TO INCREASE IN TIME
+        Mold = MA(1)
+        MA(2) = cbhm(TMYR)/1000. !TEMPORARY; JUST FOR TESTING GROWTH OF CENTRAL BH MASS
         DO I=1,NA
             L=3*(I-1)
-C            RGAL = sqrt(XA(L+1)**2+XA(L+2)**2+XA(L+3)**2)
-C            IF (RGAL>0) THEN
-C                VBH = sqrt((GALMASS(RGAL))/RGAL)/14.90763847
-C            ELSE
-C                VBH = 0.0
-C            END IF
 
-C            VA(L+1) = 0.0
-C            VA(L+2) = VBH
-C            VA(L+3) = 0.0
+            RGAL = sqrt(XA(L+1)**2+XA(L+2)**2+XA(L+3)**2)
+            IF (RGAL>0) THEN
+                VBH = sqrt(GALMASS(RGAL)/RGAL)
+            ELSE
+                VBH = 0.0
+            END IF
 
-C            WRITE(*,*) RGAL, VBH
+            VA(L+1) = 0.0
+            VA(L+2) = VBH
+            VA(L+3) = 0.0
+
+            WRITE(*,*) RGAL, VBH, MA(1), MA(2)
 
             MASS=MASS+MA(I)
-            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
-            VA(L+2) = VA(L+2)*14.90763847
-            VA(L+3) = VA(L+3)*14.90763847
+C            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
+C            VA(L+2) = VA(L+2)*14.90763847
+C            VA(L+3) = VA(L+3)*14.90763847
             index4output(I)=I  ! initialize output index (to be modified in case of merger)
         END DO
 
@@ -238,6 +241,9 @@ C  short output to save space
 
         IF(TIME.LT.TMAX)THEN
             TMYR = TIME*14.90763847
+            deltaM = MA(1) - Mold
+            MA(1) = cbhm(TMYR) + deltaM
+            Mold = MA(1)
             MCL = galaxy_mass(TMYR)
             eff_rad = get_eff_rad(TMYR)
             CALL find_RPL_newt(RPL)
