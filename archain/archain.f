@@ -17,13 +17,13 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         COMMON/collision/icollision,ione,itwo,iwarning
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
-     &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX)
+     &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX), TA(NMX)
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
         REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT, MCORE,Mold,deltaM
         LOGICAL NEWREG
         CHARACTER*50 OUTFILE, OUTNAME
         CHARACTER*15 OUTTIME
-        INTEGER NOUT, DTOUT, LD, seed(12)
+        INTEGER NOUT, DTOUT, LD, seed(12), NNEXTBH
         REAL*8  RNR, RNR2
 
         call srand(1)    !initialize RAND()
@@ -44,16 +44,16 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
 *****************************
 
 *       Read input values from STDIN
-        READ(5,*,err=999)OUTNAME,N,Nbh,DELTAT,TMAX, DTOUT
+        READ(5,*,err=999)OUTNAME,DELTAT,TMAX, DTOUT
         READ(5,*,err=999)IWR,soft,cmet, Clight,Ixc ,spin,tolerance
         READ(5,*,err=999)RPL,RCORE,GTYPE
 C        READ(5,*,err=999)MCL,RPL,RCORE,GTYPE  !MCL used to be read in from test.in as 1.e6. galaxy_mass function is now used in main loop.
 
 *       Initialize variables
-        TIME=t0/14.90763847
         TMAX = TMAX/14.90763847 ! Scaling from pc, Myr, Msun to Nbody units
         DELTAT = DELTAT/14.90763847
-        IF (N.LT.2) STOP
+        N = 0
+        Nbh = 0
         NA = N
         icollision=0
         ee=soft**2 ! square of soft(ening)
@@ -81,50 +81,75 @@ C       for tidal mass gain
         WRITE(*,*) 'Writing output to: ',OUTFILE
         WRITE(*,*)
 
+
+        MASS=0.0
+        VBH = 0.0
+
+
+C        DO I=1,NA
+C            L=3*(I-1)
+C            READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
+C        END DO
+        MA(1) = 1.0
+        TA(1) = T0/14.90763847
+        XA(1) = 0.0
+        XA(2) = 0.0
+        XA(3) = 0.0
+        VA(1) = 0.0
+        VA(2) = 0.0
+        VA(3) = 0.0
+        NA = NA+1
+        I = 2
+        DO WHILE (MA(I-1).GT.0)
+            WRITE(*,*) MA(I-1), TA(I-1)
+           READ(5,*) MA(I), TA(I)
+           IF (MA(I).GT.0) THEN
+                NA = NA+1
+                TA(I) = (TA(I) + T0)/14.90763847
+           END IF
+           I = I+1
+        END DO
+
+        TIME=TA(2)
         TMYR = TIME*14.90763847
+
+        MA(1) = cbhm(TMYR)	!THIS IS THE MASS OF THE CENTRAL BLACK HOLE THAT IS GOING TO INCREASE IN TIME
+        Mold = MA(1)
+
         MCL = galaxy_mass(TMYR)
         eff_rad = get_eff_rad(TMYR)
         CALL find_RPL_newt(RPL)
         pe = pe_func(RCORE)
-C        WRITE(*,*) pe, RPL, eff_rad, MCL
-C        STOP
 
+        WRITE(*,*) pe, RPL, eff_rad, MCL
 
-        MASS=0.0
-        VBH = 0.0
+        RGAL = eff_rad
+        XA(4) = eff_rad
+        XA(5) = 0.0
+        XA(6) = 0.0
+        IF (RGAL>0) THEN
+           VBH = sqrt(GALMASS(RGAL)/RGAL)
+        ELSE
+           VBH = 0.0
+        END IF
+
+        VA(4) = 0.0
+        VA(5) = VBH
+        VA(6) = 0.0
+
+        WRITE(*,*) RGAL, VBH, MA(1), MA(2)
+
+        MASS=MA(1)+MA(2)
+
         DO I=1,NA
-            L=3*(I-1)
-            READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
-        END DO
-        MA(1) = cbhm(TMYR)	!THIS IS THE MASS OF THE CENTRAL BLACK HOLE THAT IS GOING TO INCREASE IN TIME
-        Mold = MA(1)
-        MA(2) = cbhm(TMYR)/1000. !TEMPORARY; JUST FOR TESTING GROWTH OF CENTRAL BH MASS
-        DO I=1,NA
-            L=3*(I-1)
-
-            RGAL = sqrt(XA(L+1)**2+XA(L+2)**2+XA(L+3)**2)
-            IF (RGAL>0) THEN
-                VBH = sqrt(GALMASS(RGAL)/RGAL)
-            ELSE
-                VBH = 0.0
-            END IF
-
-            VA(L+1) = 0.0
-            VA(L+2) = VBH
-            VA(L+3) = 0.0
-
-            WRITE(*,*) RGAL, VBH, MA(1), MA(2)
-
-            MASS=MASS+MA(I)
-C            VA(L+1) = VA(L+1)*14.90763847 !rescaling to internal units
-C            VA(L+2) = VA(L+2)*14.90763847
-C            VA(L+3) = VA(L+3)*14.90763847
             index4output(I)=I  ! initialize output index (to be modified in case of merger)
         END DO
 
+        NNEXTBH = 3
+        N = 2
 
-        CALL Reduce2cm(xa,ma,NA,cmxa)
-        CALL Reduce2cm(va,ma,NA,cmva)
+        CALL Reduce2cm(xa,ma,N,cmxa)
+        CALL Reduce2cm(va,ma,N,cmva)
 
         DO I=1,3
             CMXX(I) = 0.0
@@ -133,7 +158,7 @@ C            VA(L+3) = VA(L+3)*14.90763847
             CMV(I) = 0.0
         END DO
 
-        DO I=1,NA
+        DO I=1,N
             K=3*(I-1)
             M(I)=MA(I)
             X(K+1) = XA(K+1)
@@ -153,8 +178,18 @@ C            VA(L+3) = VA(L+3)*14.90763847
             VA(L+1) = V(L+1)+CMVA(1)
             VA(L+2) = V(L+2)+CMVA(2)
             VA(L+3) = V(L+3)+CMVA(3)
-
         END DO
+
+        DO I=N+1,NA
+            L=3*(I-1)
+            XA(L+1) = 0.0
+            XA(L+2) = 0.0
+            XA(L+3) = 0.0
+            VA(L+1) = 0.0
+            VA(L+2) = 0.0
+            VA(L+3) = 0.0
+        END DO
+
 
         DELT = 0.0
         NEWREG = .true.
@@ -251,6 +286,21 @@ C  short output to save space
             MCORE = 0.1366197724*RCORE/RPL*MCL
             write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE, pe, RPL
      &               , MCORE
+
+            IF (NA.GE.NNEXTBH) THEN
+                IF (TIME.GE.TA(NNEXTBH)) THEN
+                    N = N+1
+                    Nbh = Nbh + 1
+                    XA(3*NNEXTBH-2) = eff_rad
+                    XA(3*NNEXTBH-1) = 0.0
+                    XA(3*NNEXTBH) = 0.0
+                    VBH = sqrt(GALMASS(eff_rad)/eff_rad)
+                    VA(3*NNEXTBH-2) = 0.0
+                    VA(3*NNEXTBH-1) = VBH
+                    VA(3*NNEXTBH) = 0.0
+                    NNEXTBH = NNEXTBH + 1
+                END IF
+            END IF
             GOTO 100
         ELSE
             GOTO 666
