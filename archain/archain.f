@@ -203,11 +203,6 @@ C        END DO
 
 100     CONTINUE
 
-C       UPDATE BH MASS
-C       ADDING NEW BHS
-C       ADD NEW INFALLING BH (NA -> NA + 1, N -> N + 1, NBH -> NBH + 1, XA(NA) = ... )
-
-
         MASS=0.0
         DO J=1,N
             I = index4output(J)
@@ -468,7 +463,13 @@ C       Check for collisions between all particles
                 IF(rij.LT.test)THEN
                     iwarning=iwarning+1
                     icollision=1   ! collision indicator
-                    IF (M(i).GE.M(j)) THEN
+                    IF (i.EQ.1) THEN
+                        ione=i
+                        itwo=j
+                    ELSEIF (j.EQ.1) THEN
+                        ione=j
+                        itwo=i
+                    ELSEIF (M(i).GE.M(j)) THEN
                         ione=i
                         itwo=j
                     ELSE
@@ -2798,12 +2799,18 @@ c                         test=.99*Rs
             IF(rij.LT.test)THEN!
             iwarning=iwarning+1
             icollision=1   ! collision indicator
-            IF (M(i).GE.M(j)) THEN
-                 ione=i
-                 itwo=j
+            IF (i.EQ.1) THEN
+                ione=i
+                itwo=j
+            ELSEIF (j.EQ.1) THEN
+                ione=j
+                itwo=i
+            ELSEIF (M(i).GE.M(j)) THEN
+                ione=i
+                itwo=j
             ELSE
-                 ione=j
-                 itwo=i
+                ione=j
+                itwo=i
             END IF
             RETURN
             END IF
@@ -2811,7 +2818,7 @@ c                         test=.99*Rs
          dspin(k)= dspin(k)+dsp(k)
          END DO
         ACC(I1)=ACC(I1)+m(j)*dF(1) ! here I assume action = reaction
-        ACC(I2)=ACC(I2)+m(j)*dF(2) ! which is not REALly true for 
+        ACC(I2)=ACC(I2)+m(j)*dF(2) ! which is not REALly true for
         ACC(I3)=ACC(I3)+m(j)*dF(3) ! relativistic terms (but who cares)
         ACC(J1)=ACC(J1)-m(i)*dF(1)
         ACC(J2)=ACC(J2)-m(i)*dF(2)
