@@ -19,7 +19,7 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
      &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX), TA(NMX)
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
-        REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT, MCORE,Mold,deltaM
+        REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT, MCORE,deltaM
         LOGICAL NEWREG
         CHARACTER*50 OUTFILE, OUTNAME
         CHARACTER*15 OUTTIME
@@ -526,6 +526,9 @@ C           ADD KICK to Ione
             Myks=M(ione)
             Mkax=M(itwo)
             SM(Ione)=M(Ione)+M(Itwo)
+            IF (Ione.EQ.1) THEN
+                MOLD = MOLD + M(Itwo) !make sure that gas correction accounts for mergers
+            ENDIF
             DO 6 K=1,3
                 XR(3*Ione-3+K)=(M(Ione)*X((Ione-1)*3+K)
      &          +M(Itwo)*X((Itwo-1)*3+K))/SM(Ione)
