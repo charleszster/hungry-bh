@@ -53,8 +53,8 @@ C        READ(5,*,err=999)MCL,RPL,RCORE,GTYPE  !MCL used to be read in from test
         TMAX = TMAX/14.90763847 ! Scaling from pc, Myr, Msun to Nbody units
         DELTAT = DELTAT/14.90763847
         N = 0
-        Nbh = 0
         NA = N
+        Nbh = N
         icollision=0
         ee=soft**2 ! square of soft(ening)
         EPS=tolerance
@@ -147,6 +147,7 @@ C        END DO
 
         NNEXTBH = 3
         N = 2
+        Nbh = N
 
         CALL Reduce2cm(xa,ma,N,cmxa)
         CALL Reduce2cm(va,ma,N,cmva)
@@ -285,14 +286,14 @@ C  short output to save space
             IF (NA.GE.NNEXTBH) THEN
                 IF (TIME.GE.TA(NNEXTBH)) THEN
                     N = N+1
-                    Nbh = Nbh + 1
-                    XA(3*NNEXTBH-2) = eff_rad
-                    XA(3*NNEXTBH-1) = 0.0
-                    XA(3*NNEXTBH) = 0.0
+                    Nbh = N
+                    XA(3*NNEXTBH-2) = eff_rad + cmxa(1)
+                    XA(3*NNEXTBH-1) = 0.0 + cmxa(2)
+                    XA(3*NNEXTBH) = 0.0 + cmxa(3)
                     VBH = sqrt(GALMASS(eff_rad)/eff_rad)
-                    VA(3*NNEXTBH-2) = 0.0
-                    VA(3*NNEXTBH-1) = VBH
-                    VA(3*NNEXTBH) = 0.0
+                    VA(3*NNEXTBH-2) = 0.0 + cmva(1)
+                    VA(3*NNEXTBH-1) = VBH + cmva(2)
+                    VA(3*NNEXTBH) = 0.0 + cmva(3)
                     NNEXTBH = NNEXTBH + 1
                 END IF
             END IF
@@ -541,7 +542,7 @@ C           ADD KICK to Ione
                 END DO
             END DO
           
-            DO i=Itwo,N-1
+            DO i=Itwo,NA-1  !the whole array of index4output gets corrected here, not just the active ones
                 index4output(i)=index4output(i+1)
             END  DO
           
@@ -557,8 +558,8 @@ C         MOVE THE REDUCED SYSTEM TO M,X,V
             L=0
 c         New value of the number of bodies.
             N=N-1
-            IF(Itwo.le.NofBH) NofBH=NofBH-1 ! # of BH's reduced!
-
+            NofBH=N ! # of BH's reduced!
+            Nbh = N
 
             DO 8 I=1,N
                 M(I)=SM(I)
