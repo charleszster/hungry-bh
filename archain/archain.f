@@ -274,7 +274,7 @@ C  short output to save space
             TMYR = TIME*14.90763847
             deltaM = MA(1) - Mold
             MA(1) = cbhm(TMYR) + deltaM
-            Mold = MA(1)
+            Mold = cbhm(TMYR)
             MCL = galaxy_mass(TMYR)
             eff_rad = get_eff_rad(TMYR)
             CALL find_RPL_newt(RPL)
@@ -294,6 +294,7 @@ C  short output to save space
                     VA(3*NNEXTBH-2) = 0.0 + cmva(1)
                     VA(3*NNEXTBH-1) = VBH + cmva(2)
                     VA(3*NNEXTBH) = 0.0 + cmva(3)
+                    index4output(N)=NNEXTBH
                     NNEXTBH = NNEXTBH + 1
                 END IF
             END IF
@@ -464,19 +465,8 @@ C       Check for collisions between all particles
                 IF(rij.LT.test)THEN
                     iwarning=iwarning+1
                     icollision=1   ! collision indicator
-                    IF (i.EQ.1) THEN
-                        ione=i
-                        itwo=j
-                    ELSEIF (j.EQ.1) THEN
-                        ione=j
-                        itwo=i
-                    ELSEIF (M(i).GE.M(j)) THEN
-                        ione=i
-                        itwo=j
-                    ELSE
-                        ione=j
-                        itwo=i
-                    END IF
+                    ione=i
+                    itwo=j
                     RETURN
                 END IF
                 END IF
@@ -526,9 +516,6 @@ C           ADD KICK to Ione
             Myks=M(ione)
             Mkax=M(itwo)
             SM(Ione)=M(Ione)+M(Itwo)
-            IF (Ione.EQ.1) THEN
-                MOLD = MOLD + M(Itwo) !make sure that gas correction accounts for mergers
-            ENDIF
             DO 6 K=1,3
                 XR(3*Ione-3+K)=(M(Ione)*X((Ione-1)*3+K)
      &          +M(Itwo)*X((Itwo-1)*3+K))/SM(Ione)
@@ -545,7 +532,7 @@ C           ADD KICK to Ione
                 END DO
             END DO
           
-            DO i=Itwo,NA-1  !the whole array of index4output gets corrected here, not just the active ones
+            DO i=Itwo,N-1
                 index4output(i)=index4output(i+1)
             END  DO
           
@@ -625,11 +612,12 @@ C           Handle escape of particle
           
             DO i=Ione,N-1
                 index4output(i)=index4output(i+1)
-            END  DO
+            END DO
 
 c         New value of the number of bodies.
             N=N-1
-            IF(Ione.le.NofBH) NofBH=NofBH-1 ! # of BH's reduced!
+            NBH = N
+            NofBH=NofBH-1 ! # of BH's reduced!
 
 
             DO 8 I=1,N
