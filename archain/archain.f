@@ -2795,7 +2795,7 @@ c-----------------------------------------------------
          CALL Relativistic
      &  Terms(Ii,dX,dW,rij,rDOtv,vij2,m(Ii),m(Jx),cl,DF,dfGR,spina,dsp)
             RS=2.d0*(m(i)+m(j))/CL**2
-          test= 10000.0*RS!4*RS !Collision Criterium
+          test= 4.0*RS!4*RS !Collision Criterium
 c          WRITE(6,*)rij/RS,sqrt(vij2)/cl,' R  V '
 c                         test=.99*Rs
         IF(rij.LT.test.AND.iwarning.LT.2)
@@ -2804,19 +2804,8 @@ c                         test=.99*Rs
             IF(rij.LT.test)THEN!
             iwarning=iwarning+1
             icollision=1   ! collision indicator
-            IF (i.EQ.1) THEN
-                ione=i
-                itwo=j
-            ELSEIF (j.EQ.1) THEN
-                ione=j
-                itwo=i
-            ELSEIF (M(i).GE.M(j)) THEN
-                ione=i
-                itwo=j
-            ELSE
-                ione=j
-                itwo=i
-            END IF
+            ione=i
+            itwo=j
             RETURN
             END IF
          DO k=1,3
