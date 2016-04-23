@@ -290,7 +290,7 @@ C  short output to save space
                     XA(3*NNEXTBH-2) = eff_rad + cmxa(1)
                     XA(3*NNEXTBH-1) = 0.0 + cmxa(2)
                     XA(3*NNEXTBH) = 0.0 + cmxa(3)
-                    VBH = sqrt(GALMASS(eff_rad)/eff_rad)
+                    VBH = sqrt(GALMASS(eff_rad)/eff_rad)*rand(0)
                     VA(3*NNEXTBH-2) = 0.0 + cmva(1)
                     VA(3*NNEXTBH-1) = VBH + cmva(2)
                     VA(3*NNEXTBH) = 0.0 + cmva(3)
@@ -966,6 +966,19 @@ C       Calculate diffusion coefficients assuming velocity isotropy
             GMASS = GALMASS(RGAL)
             RHO = GALRHO(RGAL)
             SIGMA = GALSIG(RGAL)
+
+C           Make correction to local velocity dispersion based on enclosed mass from BHs
+            Menclosed = 0.0
+            DO K=1,N
+                L = index4output(K)
+                RGALENC = SQRT((XA(3*L-2))**2+(XA(3*L-1)
+     &                 )**2+(XA(3*L))**2)
+                IF (RGALENC.LE.RGAL) THEN
+                    Menclosed = Menclosed + MA(L)
+                ENDIF
+            END DO
+
+            SIGMA = SQRT(SIGMA**2 + 0.5*Menclosed/RGAL) !Galactic velocity dispersion plus dispersion from enclosed BH mass
 
             vx = VA(3*I-2)
             vy = VA(3*I-1)
