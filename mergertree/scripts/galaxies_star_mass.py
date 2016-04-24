@@ -33,14 +33,17 @@ def get_func_coeffs(time, stellar_mass):
     return popt
 
 def plot_stellar_mass(time, galaxy_num, stellar_mass, stellar_mass_fitted):
-    plt.figure()
-    t_plotted = [t*1.e6 for t in time]
-    plt.loglog(t_plotted, stellar_mass, label='Original')
-    plt.loglog(t_plotted, stellar_mass_fitted, label='Fitted')
+#    plt.figure()
+    t_plotted = [t/1000. for t in time]
+    plt.semilogy(t_plotted, stellar_mass, label='Orig Data')
+    plt.semilogy(t_plotted, stellar_mass_fitted, label='Fitted Data')
+    plt.grid(b=True, which='major', color='g', linestyle='-')
+    plt.grid(b=True, which='minor', color='r', linestyle='--')
     plt.legend(loc='best')
     plt.xlabel('Time (yr)')
-    plt.ylabel('Stellar Mass (M_sun)')
+    plt.ylabel('Stellar Mass (Msun)')
     plt.title('Stellar mass for Galaxy %s' %(galaxy_num))
+#    plt.show()
 #    plt.savefig(os.path.join(plots_folder, ''.join(['Stellar_Mass_Galaxy_%s' % (galaxy_num)])))
 #    plt.close()
 

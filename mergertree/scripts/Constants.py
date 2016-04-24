@@ -9,7 +9,7 @@ import os
 
 plots_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism', 'mergertree',
                             'plots')
-cluster_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism', 'mergertree',
+cluster_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism_code', 'mergertree',
                               'cluster_files')
 
 #H0 = 100.*0.7*1.e-6 #km*s^-1*pc^-1

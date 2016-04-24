@@ -71,7 +71,7 @@ def get_masses(orbiting_bhs, smbh_cluster, key):
     return galaxy_bh_mass, central_bh_mass, bh_masses
 
 def plot_central_bh_mass(time, mass, key, label):
-    plt.plot(time, mass, label=label)
+    plt.semilogy(time, mass, label=label)
     plt.minorticks_on()
     plt.grid(b=True, which='major', color='g', linestyle='-')
     plt.grid(b=True, which='minor', color='r', linestyle='--')
