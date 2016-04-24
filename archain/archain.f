@@ -242,7 +242,7 @@ C       Include diffusion through encounters with stars
 
         WRITE(6,123)TIME*14.90763847!  /twopi
      & ,log((Tkin-ENERGY-EnerGR)/Upot),dSkin/dSpot-1,am_error!logH = the primary constant (=0!)
-     & ,N, MCL, RPL, CMX(1), CMXA(1)  ! print time, logH, N (of bodies left)
+     & ,N, MCL, RPL, RCORE, CMX(1)  ! print time, logH, N (of bodies left)
         CALL FLUSH(6)
 123     FORMAT(1x,'T: ',1p,g20.6,' dE/U=',1p,g10.2,
      &   ' dSDOt/sDOtU=',1p,g10.2,
@@ -250,7 +250,7 @@ C       Include diffusion through encounters with stars
      &   ' Nb=',0p,1x,i3,
      &   '   MCL=',1p,g10.2,
      &   '   RPL=',1p,g10.2,
-     &   '   CMX=',1p,g10.2,
+     &   '   RCORE=',1p,g10.2,
      &   '   CMXA=',1p,g10.2)
 
 200     CONTINUE
@@ -279,9 +279,6 @@ C  short output to save space
             eff_rad = get_eff_rad(TMYR)
             CALL find_RPL_newt(RPL)
             pe = pe_func(RCORE)
-            MCORE = 0.1366197724*RCORE/RPL*MCL
-            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE, pe, RPL
-     &               , MCORE
 
             IF (NA.GE.NNEXTBH) THEN
                 IF (TIME.GE.TA(NNEXTBH)) THEN
@@ -458,9 +455,9 @@ C       Check for collisions between all particles
                 RS=2.d0*(m(i)+m(j))/CL**2
                 RIJ2=dx(1)**2+dx(2)**2+dx(3)**2
                 rij=sqrt(rij2)
-                test= 4.0*RS!4*RS !Collision Criterium
+                test= 1.0*RS!4*RS !Collision Criterium
                 IF(rij.LT.test.AND.iwarning.LT.2)
-     &  WRITE(6,*)' Near collision: r/RS',rij/RS,i,j,m(i),m(j)
+     &  WRITE(6,*)' Collision: r/RS',rij/RS,i,j,m(i),m(j)
      &  ,sqrt(vij2)/cl
                 IF(rij.LT.test)THEN
                     iwarning=iwarning+1
@@ -946,7 +943,8 @@ C       Calculate diffusion coefficients assuming velocity isotropy
 
         REAL*8 vx, vy, vz, DV(3), VBH, VBH2
         REAL*8 GALRH, GMASS, RHO, SIGMA, RS, RGAL
-        REAL*8 CHI, CLAMBDA, GAMMAC, FCHI
+        REAL*8 CHI, CLAMBDA, GAMMAC, FCHI, MCORE
+        REAL*8 BINARYCUTOFF
 
         SAVE
 
@@ -963,7 +961,6 @@ C       Calculate diffusion coefficients assuming velocity isotropy
             RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1)
      &             )**2+(XA(3*I))**2+4.0*RS*RS)
 
-            GMASS = GALMASS(RGAL)
             RHO = GALRHO(RGAL)
             SIGMA = GALSIG(RGAL)
 
@@ -994,8 +991,11 @@ C     &      /14.90763847, VBH/14.90763847
 
             CHI = VBH/(1.414213562*SIGMA)
 
+            BINARYCUTOFF = 2.0*SIGMA !IF BH IS FASTER THAN LOCAL VEL DISP, SWITCH OFF DIFFUSION
+
             CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
             IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
+            IF (VBH.GT.BINARYCUTOFF) CLAMBDA = 0.0
 
             ERF_TEMP = ERF_NR(CHI)
             FCHI = ERF_TEMP - 2.0*CHI/1.772453851*EXP(-CHI*CHI)
@@ -1051,7 +1051,7 @@ C           Calculate energy change and test for too large kicks
             if (DELTAV.le.1.0) then
                VBH = SQRT(VX**2+VY**2+VZ**2)
             else
-               WRITE(*,*) 'HUGE KICK:',RGAL,GMASS,RHO,
+               WRITE(*,*) 'HUGE KICK:',RGAL,RHO,
      &               SIGMA/14.90763847,VBH/14.90763847
      &              ,RGAL, GALRH, MCL, MA(I)
                CALL GETGAUSS(GAUSS)
@@ -2795,11 +2795,11 @@ c-----------------------------------------------------
          CALL Relativistic
      &  Terms(Ii,dX,dW,rij,rDOtv,vij2,m(Ii),m(Jx),cl,DF,dfGR,spina,dsp)
             RS=2.d0*(m(i)+m(j))/CL**2
-          test= 4.0*RS!4*RS !Collision Criterium
+          test= 1.0*RS!4*RS !Collision Criterium
 c          WRITE(6,*)rij/RS,sqrt(vij2)/cl,' R  V '
 c                         test=.99*Rs
         IF(rij.LT.test.AND.iwarning.LT.2)
-     &  WRITE(6,*)' Near collision: r/RS',rij/RS,i,j,m(i),m(j)
+     &  WRITE(6,*)' Collision: r/RS',rij/RS,i,j,m(i),m(j)
      &  ,sqrt(vij2)/cl ! diagno
             IF(rij.LT.test)THEN!
             iwarning=iwarning+1
