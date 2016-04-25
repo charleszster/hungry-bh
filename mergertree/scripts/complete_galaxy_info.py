@@ -21,6 +21,17 @@ WM = Constants.WM
 WV = Constants.WV
 t0 = 1.56537653+03 #Myr
 
+def write_galaxies_final_masses(galaxies_masses):
+    galaxies_masses_list = []
+    for galaxy_nums, galaxy_data in galaxies_masses.iteritems():
+        if galaxy_data[1][-1] > 13.72:
+            galaxies_masses_list.append([galaxy_nums, galaxy_data[2][-1]])
+    galaxies_masses_list = sorted(galaxies_masses_list, key=lambda l: l[1], reverse=True)
+    with open(os.path.join(cluster_folder, 'galaxies_final_masses.txt'), 'wb') as f:
+        f.write('Galaxy ID\t\tFinal Galaxy Mass (Msun)\n')
+        for line in galaxies_masses_list:
+            f.write('%s\t\t\t%.0f\n' % (line[0].zfill(4), line[1]))
+
 def get_galaxy_mass_data(galaxies_masses, galaxy_num):
     galaxy_mass_coeffs = analyze_clusters.curve_fit_any_galaxy_mass(galaxies_masses, galaxy_num)
     print 'Galaxy Mass Coefficients (10**(a*t**7. + b*t**6. + c*t**5. + d*t**4. + e*t**3. + f*t**2. + g*t + h)), t in Gyr:'
@@ -117,7 +128,8 @@ def run():
 
     galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
     galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
-    galaxy_num = '1'
+#    write_galaxies_final_masses(galaxies_masses)
+    galaxy_num = '80'
     t_s, masses_fitted = get_galaxy_mass_data(galaxies_masses, galaxy_num)
 
     central_bh_mass, central_bh_mass_fitted = get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster,
@@ -125,8 +137,8 @@ def run():
     time, stellar_mass, stellar_mass_coefficients, stellar_mass_fitted = get_stellar_mass_growth(galaxies_by_id,
                                                                                                              galaxy_num)
     
-#    plot_all_data(t_s, masses_fitted, galaxies_masses, galaxy_num, central_bh_mass, central_bh_mass_fitted, time,
-#                                                                                     stellar_mass, stellar_mass_fitted)
+    plot_all_data(t_s, masses_fitted, galaxies_masses, galaxy_num, central_bh_mass, central_bh_mass_fitted, time,
+                                                                                     stellar_mass, stellar_mass_fitted)
     read_orbiting_bhs(galaxy_num, stellar_mass_coefficients)
 
 if __name__ == '__main__':

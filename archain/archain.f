@@ -25,6 +25,7 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         CHARACTER*15 OUTTIME
         INTEGER NOUT, DTOUT, LD, seed(12), NNEXTBH
         REAL*8  RNR, RNR2
+        REAL*8 phi, theta
 
         call srand(1)    !initialize RAND()
         DO I=1,12        !initialize RANDOM_NUMBER()
@@ -124,18 +125,32 @@ C        END DO
         WRITE(*,*) pe, RPL, eff_rad, MCL
 
         RGAL = eff_rad
-        XA(4) = eff_rad
-        XA(5) = 0.0
-        XA(6) = 0.0
+C        XA(4) = eff_rad
+C        XA(5) = 0.0
+C        XA(6) = 0.0
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+        phi=rand()*2.*PI !azimuth angle
+        theta=rand()*PI  !polar angle
+        XA(4)=eff_rad*sin(theta)*cos(phi)
+        XA(5)=eff_rad*sin(theta)*sin(phi)
+        XA(6)=eff_rad*cos(theta)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         IF (RGAL>0) THEN
            VBH = sqrt(GALMASS(RGAL)/RGAL)
         ELSE
            VBH = 0.0
         END IF
 
-        VA(4) = 0.0
-        VA(5) = VBH
-        VA(6) = 0.0
+C        VA(4) = 0.0
+C        VA(5) = VBH
+C        VA(6) = 0.0
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+        phi=rand()*2.*PI !azimuth angle
+        theta=rand()*PI  !polar angle
+        VA(4)=VBH*sin(theta)*cos(phi)
+        VA(5)=VBH*sin(theta)*sin(phi)
+        VA(6)=VBH*cos(theta)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
         WRITE(*,*) RGAL, VBH, MA(1), MA(2)
 
@@ -287,13 +302,28 @@ C  short output to save space
                 IF (TIME.GE.TA(NNEXTBH)) THEN
                     N = N+1
                     Nbh = N
-                    XA(3*NNEXTBH-2) = eff_rad + cmxa(1)
-                    XA(3*NNEXTBH-1) = 0.0 + cmxa(2)
-                    XA(3*NNEXTBH) = 0.0 + cmxa(3)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+C                    XA(3*NNEXTBH-2) = eff_rad + cmxa(1)
+C                    XA(3*NNEXTBH-1) = 0.0 + cmxa(2)
+C                    XA(3*NNEXTBH) = 0.0 + cmxa(3)
+                    phi=rand()*2.*PI !azimuth angle
+                    theta=rand()*PI  !polar angle
+                    XA(3*NNEXTBH-2)=eff_rad*sin(theta)*cos(phi) +
+     &                              cmxa(1)
+                    XA(3*NNEXTBH-1)=eff_rad*sin(theta)*sin(phi) +
+     &                              cmxa(2)
+                    XA(3*NNEXTBH)=eff_rad*cos(theta) + cmxa(3)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
                     VBH = sqrt(GALMASS(eff_rad)/eff_rad)*rand(0)
-                    VA(3*NNEXTBH-2) = 0.0 + cmva(1)
-                    VA(3*NNEXTBH-1) = VBH + cmva(2)
-                    VA(3*NNEXTBH) = 0.0 + cmva(3)
+C                    VA(3*NNEXTBH-2) = 0.0 + cmva(1)
+C                    VA(3*NNEXTBH-1) = VBH + cmva(2)
+C                    VA(3*NNEXTBH) = 0.0 + cmva(3)
+                    phi=rand()*2.*PI !azimuth angle
+                    theta=rand()*PI  !polar angle
+                    VA(3*NNEXTBH-2)=VBH*sin(theta)*cos(phi) + cmva(1)
+                    VA(3*NNEXTBH-1)=VBH*sin(theta)*sin(phi) + cmva(2)
+                    VA(3*NNEXTBH)=VBH*cos(theta) + cmva(3)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
                     index4output(N)=NNEXTBH
                     NNEXTBH = NNEXTBH + 1
                 END IF
