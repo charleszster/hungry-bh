@@ -17,7 +17,8 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         COMMON/collision/icollision,ione,itwo,iwarning
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
-     &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX), TA(NMX)
+     &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX), TA(NMX),
+     &   MA_TEMP, TA_TEMP, T_AT_CTR
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
         REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT, MCORE,deltaM
         LOGICAL NEWREG
@@ -93,6 +94,7 @@ C            READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
 C        END DO
         MA(1) = 1.0
         TA(1) = T0/14.90763847
+        T_AT_CTR(1) = T0
         XA(1) = 0.0
         XA(2) = 0.0
         XA(3) = 0.0
@@ -102,11 +104,14 @@ C        END DO
         NA = NA+1
         I = 2
         DO WHILE (MA(I-1).GT.0)
-            WRITE(*,*) MA(I-1), TA(I-1)
-           READ(5,*) MA(I), TA(I)
-           IF (MA(I).GT.0) THEN
-                NA = NA+1
-                TA(I) = (TA(I) + T0)/14.90763847
+           WRITE(*,*) MA(I-1), TA(I-1)
+           READ(5,*) MA_TEMP, TA_TEMP, T_AT_CTR !MA(I), TA(I)
+           IF (MA_TEMP.GT.0) THEN
+              IF (T_AT_CTR .LE. TMAX*2.0) THEN
+                 NA = NA+1
+                 MA(I) = MA_TEMP
+                 TA(I) = (TA_TEMP + T0)/14.90763847
+              END IF
            END IF
            I = I+1
         END DO
