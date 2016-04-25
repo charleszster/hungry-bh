@@ -53,13 +53,13 @@ def get_masses(orbiting_bhs, smbh_cluster, key):
                 with open(os.path.join(cluster_folder, 
                                        'Infalling_BH_masses_galaxy_%s' % (key)), 'wb') as f:
 #                    print key, redshift, bhs
-                    f.write('BH ID\tInfall time [Gyr]\tInfall mass [Msun]\n')
+                    f.write('BH ID\tInfall mass [Msun]\tInfall time [Myr]\n')
                     bh_masses = []
                     for line in smbh_cluster:
                         if line[0] == redshift:
                             for bh in bhs:
                                if bh == line[2]:
-                                   f.write('%s\t%s\t%s\n' % (bh, line[7], line[4]))
+                                   f.write('%s\t%s\t%s\n' % (bh, line[4], line[7]*1000.))
                                    bh_masses.append(line[4])
                 plt.figure()
                 plt.hist(np.log10(bh_masses), bins=30)

@@ -107,19 +107,19 @@ def read_orbiting_bhs(galaxy_num, smc):
         whole = f.readlines()
     whole = [part.split() for part in whole[1:]]
     whole = np.array([[ast.literal_eval(entry) for entry in line] for line in whole])
-    whole.view('i8,i8,i8').sort(order=['f1'], axis=0)
+    whole.view('i8,i8,i8').sort(order=['f2'], axis=0)
     with open(os.path.join(cluster_folder, 'Infalling_BH_masses_galaxy_%s' % (galaxy_num)), 'wb') as f:
-        f.write('BH ID\tInfall time [Gyr]\tInfall mass [Msun]\tt at Ctr [Gyr]\n')
+        f.write('BH ID\tInfall mass [Msun]\tInfall time [Myr]\tt at Ctr [Myr]\n')
         for line in whole:
-            timo = t0+line[1]*1000
+            timo = t0+line[2]
             z = get_z(timo)
             stlr_mass = get_stlr_mass(timo, smc)
             eff_rad = get_eff_rad(stlr_mass, z)
             sigma_eff = get_sigma_eff(stlr_mass, z)
             r_drop = eff_rad
-            t_fric = get_t_fric(sigma_eff, line[2], eff_rad, r_drop)
-            t_at_center = timo/1000 + t_fric
-            f.write('%s\t%9.3f\t\t\t\t%11.0f\t\t%11.2f\n' % (str(int(line[0])).zfill(4), line[1], line[2],
+            t_fric = get_t_fric(sigma_eff, line[1], eff_rad, r_drop)
+            t_at_center = timo + t_fric*1000.
+            f.write('%s\t%11.0f\t\t\t%8.3f\t\t\t%11.0f\n' % (str(int(line[0])).zfill(4), line[1], line[2],
                                                              t_at_center))
 
 def run():
@@ -129,7 +129,7 @@ def run():
     galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
     galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
 #    write_galaxies_final_masses(galaxies_masses)
-    galaxy_num = '80'
+    galaxy_num = '1'
     t_s, masses_fitted = get_galaxy_mass_data(galaxies_masses, galaxy_num)
 
     central_bh_mass, central_bh_mass_fitted = get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster,
