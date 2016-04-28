@@ -94,7 +94,6 @@ C            READ(5,*)MA(I),(XA(L+K),K=1,3),(VA(L+K),K=1,3)
 C        END DO
         MA(1) = 1.0
         TA(1) = T0/14.90763847
-        T_AT_CTR(1) = T0
         XA(1) = 0.0
         XA(2) = 0.0
         XA(3) = 0.0
@@ -107,10 +106,11 @@ C        END DO
            WRITE(*,*) MA(I-1), TA(I-1)
            READ(5,*) MA_TEMP, TA_TEMP, T_AT_CTR !MA(I), TA(I)
            IF (MA_TEMP.GT.0) THEN
-              IF (T_AT_CTR .LE. TMAX*2.0) THEN
+              IF (T_AT_CTR .LE. (TMAX*14.90763847)*2.0) THEN
                  NA = NA+1
                  MA(I) = MA_TEMP
                  TA(I) = (TA_TEMP + T0)/14.90763847
+                 write(*,*) MA(I), TA(I)
               END IF
            END IF
            I = I+1
@@ -139,6 +139,8 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         XA(4)=eff_rad*sin(theta)*cos(phi)
         XA(5)=eff_rad*sin(theta)*sin(phi)
         XA(6)=eff_rad*cos(theta)
+        write(*,*) XA(4), XA(5), XA(6), SQRT(XA(4)**2+XA(5)**2+XA(6)**2)
+     &  , eff_rad
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         IF (RGAL>0) THEN
            VBH = sqrt(GALMASS(RGAL)/RGAL)
@@ -155,6 +157,9 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         VA(4)=VBH*sin(theta)*cos(phi)
         VA(5)=VBH*sin(theta)*sin(phi)
         VA(6)=VBH*cos(theta)
+        write(*,*) VA(4), VA(5), VA(6), SQRT(VA(4)**2+VA(5)**2+VA(6)**2)
+     &  , VBH
+        STOP
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
         WRITE(*,*) RGAL, VBH, MA(1), MA(2)
