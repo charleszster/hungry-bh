@@ -19,7 +19,7 @@ cluster_folder = Constants.cluster_folder
 H0 = Constants.H0
 WM = Constants.WM
 WV = Constants.WV
-t0 = 1.56537653+03 #Myr
+t0 = 1.56537653e+03 #Myr
 
 def write_galaxies_final_masses(galaxies_masses):
     galaxies_masses_list = []
@@ -116,7 +116,7 @@ def read_orbiting_bhs(galaxy_num, smc):
             stlr_mass = get_stlr_mass(timo, smc)
             eff_rad = get_eff_rad(stlr_mass, z)
             sigma_eff = get_sigma_eff(stlr_mass, z)
-            r_drop = eff_rad
+            r_drop = 5000.0
             t_fric = get_t_fric(sigma_eff, line[1], eff_rad, r_drop)
             t_at_center = timo + t_fric*1000.
             f.write('%s\t%11.0f\t\t\t%8.3f\t\t\t%11.0f\n' % (str(int(line[0])).zfill(4), line[1], line[2],

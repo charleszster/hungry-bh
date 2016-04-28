@@ -103,20 +103,22 @@ C        END DO
         NA = NA+1
         I = 2
         DO WHILE (MA(I-1).GT.0)
-           WRITE(*,*) MA(I-1), TA(I-1)
+C           WRITE(*,*) MA(I-1), TA(I-1)
            READ(5,*) MA_TEMP, TA_TEMP, T_AT_CTR !MA(I), TA(I)
            IF (MA_TEMP.GT.0) THEN
-              IF (T_AT_CTR .LE. (TMAX*14.90763847)*2.0) THEN
+              IF (T_AT_CTR .LE.(TMAX*14.9763847*100.0)) THEN   !infall criterion
                  NA = NA+1
                  MA(I) = MA_TEMP
                  TA(I) = (TA_TEMP + T0)/14.90763847
                  write(*,*) MA(I), TA(I)
+                 I = I+1
               END IF
-           END IF
-           I = I+1
+            ELSE
+                GOTO 778
+            END IF
         END DO
 
-        TIME=TA(2)
+778     TIME=TA(2)
         TMYR = TIME*14.90763847
 
         MA(1) = cbhm(TMYR)	!THIS IS THE MASS OF THE CENTRAL BLACK HOLE THAT IS GOING TO INCREASE IN TIME
@@ -159,7 +161,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         VA(6)=VBH*cos(theta)
         write(*,*) VA(4), VA(5), VA(6), SQRT(VA(4)**2+VA(5)**2+VA(6)**2)
      &  , VBH
-        STOP
+C        STOP
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
         WRITE(*,*) RGAL, VBH, MA(1), MA(2)
@@ -267,7 +269,7 @@ C       Include diffusion through encounters with stars
 
         WRITE(6,123)TIME*14.90763847!  /twopi
      & ,log((Tkin-ENERGY-EnerGR)/Upot),dSkin/dSpot-1,am_error!logH = the primary constant (=0!)
-     & ,N, MCL, RPL, CMX(1), CMXA(1)  ! print time, logH, N (of bodies left)
+     & ,N, MCL, RPL, CMX(1), RCORE  ! print time, logH, N (of bodies left)
         CALL FLUSH(6)
 123     FORMAT(1x,'T: ',1p,g20.6,' dE/U=',1p,g10.2,
      &   ' dSDOt/sDOtU=',1p,g10.2,
@@ -276,7 +278,7 @@ C       Include diffusion through encounters with stars
      &   '   MCL=',1p,g10.2,
      &   '   RPL=',1p,g10.2,
      &   '   CMX=',1p,g10.2,
-     &   '   CMXA=',1p,g10.2)
+     &   '   RCORE=',1p,g10.2)
 
 200     CONTINUE
 
@@ -304,9 +306,9 @@ C  short output to save space
             eff_rad = get_eff_rad(TMYR)
             CALL find_RPL_newt(RPL)
             pe = pe_func(RCORE)
-            MCORE = 0.1366197724*RCORE/RPL*MCL
-            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE, pe, RPL
-     &               , MCORE
+C            MCORE = 0.1366197724*RCORE/RPL*MCL
+C            write(*,*)SQRT(XA(4)**2+XA(5)**2+XA(6)**2), RCORE, pe, RPL
+C     &               , MCORE
 
             IF (NA.GE.NNEXTBH) THEN
                 IF (TIME.GE.TA(NNEXTBH)) THEN
@@ -1008,17 +1010,16 @@ C       Calculate diffusion coefficients assuming velocity isotropy
             SIGMA = GALSIG(RGAL)
 
 C           Make correction to local velocity dispersion based on enclosed mass from BHs
-            Menclosed = 0.0
+C            Menclosed = 0.0
             DO K=1,N
-                L = index4output(K)
-                RGALENC = SQRT((XA(3*L-2))**2+(XA(3*L-1)
-     &                 )**2+(XA(3*L))**2)
-                IF (RGALENC.LE.RGAL) THEN
-                    Menclosed = Menclosed + MA(L)
+                IF (K.NE.J) THEN
+                    L = index4output(K)
+                    RGALENC = SQRT((XA(3*L-2)-XA(3*I-2))**2
+     &                   +(XA(3*L-1)-XA(3*I-1))**2
+     &                   +(XA(3*L)-XA(3*I))**2)
+                    SIGMA = SQRT(SIGMA**2 + MA(L)/RGALENC)
                 ENDIF
             END DO
-
-            SIGMA = SQRT(SIGMA**2 + 0.5*Menclosed/RGAL) !Galactic velocity dispersion plus dispersion from enclosed BH mass
 
             vx = VA(3*I-2)
             vy = VA(3*I-1)
