@@ -608,7 +608,7 @@ c         New value of the number of bodies.
 
             WRITE(6,*)' Merge:',ione,itwo,Myks,Mkax,' N, NBH=',N,NofBH
      &     ,' masses ',(M(k),k=1,N)
-            WRITE(67,*)' merge ',
+            WRITE(67,*)' Merge:', time*14.90763847,
      &           ione,itwo,i1wr,i2wr,MBH1,MBH2,
      &           MA(i1wr),MA(i2wr),(XKICK(j),j=1,3),
      &           'remaining:',(M(j),j=1,N)
@@ -673,8 +673,11 @@ c         New value of the number of bodies.
 7               CONTINUE
 8           CONTINUE
 
-            WRITE(6,*)' Escape:',ione,' N, NBH=',N,NofBH
-     &     ,' masses ',(M(k),k=1,N)
+            WRITE(6,*)' Escape:',ione,' N=',N,
+     &     ,' remaining:',(M(k),k=1,N)
+
+            WRITE(67,*)' Escape:',time*14.90763847,ione,' N=',N,
+     &     ,' remaining:',(M(k),k=1,N)
 
 C            IF(N.EQ.1)THEN! N.EQ.1!!!!!!!!!!!
 C                WRITE(6,*)' Only one body left!'
