@@ -673,10 +673,10 @@ c         New value of the number of bodies.
 7               CONTINUE
 8           CONTINUE
 
-            WRITE(6,*)' Escape:',ione,' N=',N,
+            WRITE(6,*)' Escape:',ione,' N=',N
      &     ,' remaining:',(M(k),k=1,N)
 
-            WRITE(67,*)' Escape:',time*14.90763847,ione,' N=',N,
+            WRITE(67,*)' Escape:',time*14.90763847,ione,' N=',N
      &     ,' remaining:',(M(k),k=1,N)
 
 C            IF(N.EQ.1)THEN! N.EQ.1!!!!!!!!!!!
