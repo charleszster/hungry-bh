@@ -1209,7 +1209,7 @@ C            write(*,*) "DELTAW = ",DELTAW
 
         IF (GTYPE.EQ.1) THEN
             r_lim = sqrt(RCORE*RPL)
-            IF (R.LE.1.0) THEN
+            IF (R.LE.0.5*RCORE) THEN
                 GALSIG = SQRT(6.*MCL*(PI*PI/8.-1.)/(PI*RPL)) !eq. 11 in Stone & Ostriker (internal units)
             ELSEIF (R.LE.r_lim) THEN
                 GALSIG = sigma_near(R)*14.90763847 !sigma_near(R) is in astrophysical units, hence transformation to internal units
