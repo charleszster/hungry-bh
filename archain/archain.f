@@ -534,6 +534,9 @@ C           Handle mergers of two particles - include kicks here!
 
             SAVE
 
+            i1wr=index4output(ione)
+            i2wr=index4output(itwo)
+
             L=0
             WRITE(6,*)' Masses initially:',(M(k),k=1,N)
             DO I=1,ione-1
@@ -602,13 +605,13 @@ c         New value of the number of bodies.
 8           CONTINUE
 
             icollision=0
-            i1wr=index4output(ione)
-            i2wr=index4output(itwo) !?? wrong ?? because already changed (above)
-            
+
             WRITE(6,*)' Merge:',ione,itwo,Myks,Mkax,' N, NBH=',N,NofBH
      &     ,' masses ',(M(k),k=1,N)
             WRITE(67,*)' merge ',
-     &  ione,itwo,i1wr,i2wr,M(ione),m(itwo),M(i1wr),M(i2wr),(M(j),j=1,N)
+     &           ione,itwo,i1wr,i2wr,MBH1,MBH2,
+     &           MA(i1wr),MA(i2wr),(XKICK(j),j=1,3),
+     &           'remaining:',(M(j),j=1,N)
 
             ione=0
             itwo=0
@@ -875,7 +878,7 @@ C        WRITE(*,*) "VPAR: ", VPAR
         INCLUDE 'archain.h'
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 ACC(*)
-        REAL*8 RGAL2, ACCEL
+        REAL*8 RGAL2, ACCEL, RS
         SAVE
 
 C       Physical positions and velocities (in the inertial coordinate)
@@ -890,9 +893,11 @@ C---  init acc
 
         IF (GTYPE.EQ.1) THEN   !JERRY PROFILE
             DO  I=1,N
+                RS=2.d0*(M(I))/Clight**2 !Softening of order 2xSchwarzschild radius
+
                 RGAL2 = (X(3*I-2)+CMX(1)+CMXA(1))**2+(X(3*I-1)
      &              +CMX(2)+CMXA(2))**2+(X(3*I)+CMX(3)
-     &              +CMXA(3))**2
+     &              +CMXA(3))**2 +4.0*RS*RS
 
                 ACC(3*I-2) = SO_r_ddot(SQRT(RGAL2))*(X(3*I-2)+CMX(1)+
      &                       CMXA(1))/SQRT(RGAL2)
@@ -1026,7 +1031,7 @@ C            Menclosed = 0.0
             vz = VA(3*I)
 
 C           velocity of black hole + velocity dispersion to get mean encounter velocity
-            VBH = SQRT(vx**2+vy**2+vz**2) !+SIGMA**2)
+            VBH = SQRT(vx**2+vy**2+vz**2+1000.)  !softening of the order of sqrt(1000)/14.9 km/s
 
 C            WRITE(*,*) sqrt(VX*VX+VY*VY+VZ*VZ)/14.90763847,
 C     &      sqrt(V(3*I-2)*V(3*I-2)+V(3*I-1)*V(3*I-1)+V(3*I)*V(3*I))
@@ -1060,6 +1065,7 @@ C     &      /14.90763847, VBH/14.90763847
                 FBOT = 0.0
             ENDIF
 
+
 C           draw random vector
             x1 = rand(0)-0.5
             y1 = rand(0)-0.5
@@ -1071,16 +1077,22 @@ C           draw random vector
 
             vp = SQRT(vxp*vxp+vyp*vyp+vzp*vzp)
 
+            IF (VP.EQ.0.0) THEN
+                vxp = rand(0)-0.5
+                vyp = rand(0)-0.5
+                vzp = rand(0)-0.5
+                vp = SQRT(vxp*vxp+vyp*vyp+vzp*vzp)
+            ENDIF
+
 C           unit vector perpendicular to direction of motion
             vxp = vxp/vp
             vyp = vyp/vp
             vzp = vzp/vp
 *
-            VBH2 = vx**2+vy**2+vz**2
+            VBH2 = vx**2+vy**2+vz**2+1000.
             VBH = sqrt(VBH2)
             DELTAE = 0.5*MA(I)*VBH2
 *
-
             VX = VX + FP*VX/VBH + FBOT*vxp
             VY = VY + FP*VY/VBH + FBOT*vyp
             VZ = VZ + FP*VZ/VBH + FBOT*vzp
@@ -1094,7 +1106,7 @@ C           Calculate energy change and test for too large kicks
             else
                WRITE(*,*) 'HUGE KICK:',RGAL,GMASS,RHO,
      &               SIGMA/14.90763847,VBH/14.90763847
-     &              ,RGAL, GALRH, MCL, MA(I)
+     &         , GALRH, MCL, MA(I)
                CALL GETGAUSS(GAUSS)
                VX = VBH/SQRT(3.0)*GAUSS
                CALL GETGAUSS(GAUSS)
@@ -1191,12 +1203,15 @@ C            write(*,*) "DELTAW = ",DELTAW
         REAL*8 FUNCTION GALSIG(R)
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
+        PARAMETER (MSTAR=0.45, PI=3.141592653589793)
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 R, r_lim
 
         IF (GTYPE.EQ.1) THEN
             r_lim = sqrt(RCORE*RPL)
-            IF (R.LE.r_lim) THEN
+            IF (R.LE.1.0) THEN
+                GALSIG = SQRT(6.*MCL*(PI*PI/8.-1.)/(PI*RPL)) !eq. 11 in Stone & Ostriker (internal units)
+            ELSEIF (R.LE.r_lim) THEN
                 GALSIG = sigma_near(R)*14.90763847 !sigma_near(R) is in astrophysical units, hence transformation to internal units
             ELSE
                 GALSIG = sigma_far(R)*14.90763847
