@@ -989,7 +989,7 @@ C       Calculate diffusion coefficients assuming velocity isotropy
         REAL*8 vx, vy, vz, DV(3), VBH, VBH2
         REAL*8 GALRH, GMASS, RHO, SIGMA, RS, RGAL
         REAL*8 CHI, CLAMBDA, GAMMAC, FCHI, MCORE
-        REAL*8 BINARYCUTOFF
+        REAL*8 VESC
 
         SAVE
 
@@ -1008,6 +1008,7 @@ C       Calculate diffusion coefficients assuming velocity isotropy
             RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1)
      &             )**2+(XA(3*I))**2+4.0*RS*RS)
 
+            GMASS = GALMASS(RGAL)
             RHO = GALRHO(RGAL)
             SIGMA = GALSIG(RGAL)
 
@@ -1041,6 +1042,10 @@ C     &      /14.90763847, VBH/14.90763847
             CLAMBDA = LOG(RGAL*(VBH**2+SIGMA**2)/MA(I)) !Hoffman & Loeb (2007)
 C            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
             IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
+
+C           Check if velocity of BH is larger than local escape velocity (indicates binary)
+            VESC = SQRT(2.0*GMASS/RGAL)
+            IF (VBH.GT.VESC) CLAMBDA = 0.0
 
             ERF_TEMP = ERF_NR(CHI)
             FCHI = ERF_TEMP - 2.0*CHI/1.772453851*EXP(-CHI*CHI)
