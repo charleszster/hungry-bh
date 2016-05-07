@@ -62,7 +62,7 @@ C        READ(5,*,err=999)MCL,RPL,RCORE,GTYPE  !MCL used to be read in from test
         EPS=tolerance
         ENER0=0
         NEWREG=.TRUE.
-        KSMX=10000000 ! only this many steps without RETURN
+        KSMX=1000000 ! only this many steps without RETURN
         NOUT = 0 !count outputs
 
 C       for tidal mass gain
@@ -368,6 +368,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         INCLUDE 'archain.h'
         COMMON/collision/icollision,ione,itwo,iwarning
         COMMON/outputindex/index4output(200)
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 cmet(3),spini(3)
         REAL*8 RGAL, RHO, SIGMA
         REAL*8 PROB_TC(NMX),SCAP,R_T,LBD
@@ -383,7 +384,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         wknx=tnext0/deltat
         knx=tnext0/deltat+0.1d0
         tnext=knx*deltat
-        tstep=tnext-time
+        tstep=abs(tnext-time)
         nmerger = 0        ! no mergers yet
 
  10     CONTINUE
@@ -444,7 +445,7 @@ C       ENCOUNTER PROBABILITY COMPUTATION FOR TIDAL MASS GAIN
             RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1))**2
      &                   +(XA(3*I))**2+4.0*RS*RS)
 C           Handle escape of particles -- set escape radius here!
-            IF (RGAL.gt.1000000.0) THEN
+            IF (RGAL.gt.RPL) THEN   !1000000.0
                 CALL ESCAPE(J)
             END IF
 
@@ -528,7 +529,7 @@ C           Handle mergers of two particles - include kicks here!
 
             INCLUDE 'archain.h'
             REAL*8 SM(NMX),XR(NMX3),XDR(NMX3),xwr(nmx3),ywr(nmx3)
-            REAL*8 XKICK(3), VBH1(3), VBH2(3), MBH1, MBH2
+            REAL*8 XKICK(3), VBH1(3), VBH2(3), MBH1, MBH2, RSEP
             COMMON/collision/icollision,Ione,Itwo,iwarning
             COMMON/outputindex/index4output(200)
 
@@ -546,6 +547,9 @@ C           Handle mergers of two particles - include kicks here!
                     XDR(3*I-3+K)=V(3*I-3+K)
                 END DO
             END DO
+
+            RSEP = SQRT((X(3*Ione-2)-X(3*Itwo-2))**2+
+     &       (X(3*Ione-1)-X(3*Itwo-1))**2+(X(3*Ione)-X(3*Itwo))**2)
 
 C           ADD KICK to Ione
             MBH1 = M(Ione)
@@ -610,7 +614,10 @@ c         New value of the number of bodies.
      &     ,' masses ',(M(k),k=1,N)
             WRITE(67,*)' Merge:', time*14.90763847,
      &           ione,itwo,i1wr,i2wr,MBH1,MBH2,
-     &           MA(i1wr),MA(i2wr),(XKICK(j),j=1,3),
+     &           RSEP,(XKICK(j)/14.90763847,j=1,3)
+     &          ,VBH1(1)/14.90763847,VBH1(2)/14.90763847,
+     &          VBH1(3)/14.90763847,VBH2(1)/14.90763847
+     &          ,VBH2(2)/14.90763847,VBH2(3)/14.90763847,
      &           'remaining:',(M(j),j=1,N)
 
             ione=0
@@ -635,8 +642,11 @@ C           Handle escape of particle
             INCLUDE 'archain.h'
             REAL*8 SM(NMX),XR(NMX3),XDR(NMX3)
             COMMON/outputindex/index4output(200)
+            INTEGER L
 
             SAVE
+
+            L = index4output(Ione)
 
             WRITE(6,*)' Masses initially:',(M(k),k=1,N)
             DO I=1,ione-1
@@ -673,10 +683,14 @@ c         New value of the number of bodies.
 7               CONTINUE
 8           CONTINUE
 
-            WRITE(6,*)' Escape:',ione,' N=',N
+            WRITE(6,*)' Escape:',time*14.90763847,ione,L,
+     &      MA(L), VA(3*L-2)/14.90763847, VA(3*L-1)/14.90763847
+     &           , VA(3*L)/14.90763847,' N=',N
      &     ,' remaining:',(M(k),k=1,N)
 
-            WRITE(67,*)' Escape:',time*14.90763847,ione,' N=',N
+            WRITE(67,*)' Escape:',time*14.90763847,ione,L,
+     &      MA(L), VA(3*L-2)/14.90763847, VA(3*L-1)/14.90763847
+     &           , VA(3*L)/14.90763847,' N=',N
      &     ,' remaining:',(M(k),k=1,N)
 
 C            IF(N.EQ.1)THEN! N.EQ.1!!!!!!!!!!!
@@ -1025,6 +1039,7 @@ C            Menclosed = 0.0
                     RGALENC = SQRT((XA(3*L-2)-XA(3*I-2))**2
      &                   +(XA(3*L-1)-XA(3*I-1))**2
      &                   +(XA(3*L)-XA(3*I))**2)
+C           MAKE CENTER OF MASS HERE
                     SIGMA = SQRT(SIGMA**2 + MA(L)/RGALENC)
                 ENDIF
             END DO
@@ -1043,14 +1058,15 @@ C     &      /14.90763847, VBH/14.90763847
 
             CHI = VBH/(1.414213562*SIGMA)
 
-            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
+            CLAMBDA = LOG(RGAL*(VBH**2+SIGMA**2)/MA(I)) !Hoffman & Loeb (2007)
+C            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
             IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
 
             ERF_TEMP = ERF_NR(CHI)
             FCHI = ERF_TEMP - 2.0*CHI/1.772453851*EXP(-CHI*CHI)
             FCHI = 0.5*FCHI*CHI**(-2)
 
-            IF (SIGMA.GT.0.0) THEN
+            IF ((SIGMA.GT.0.0).AND.(DT.GT.0.0)) THEN
                 GAMMAC = 4.0*PI*CLAMBDA*RHO/SIGMA
                 DVP = -GAMMAC*FCHI/SIGMA*(MA(I)+MSTAR)
                 DVP2 = SQRT(2.0)*GAMMAC*FCHI/CHI*MSTAR
@@ -1110,6 +1126,9 @@ C           Calculate energy change and test for too large kicks
                WRITE(*,*) 'HUGE KICK:',RGAL,GMASS,RHO,
      &               SIGMA/14.90763847,VBH/14.90763847
      &         , GALRH, MCL, MA(I)
+                IF (RGAL.GT.RCORE) THEN
+                    STOP
+                ENDIF
                CALL GETGAUSS(GAUSS)
                VX = VBH/SQRT(3.0)*GAUSS
                CALL GETGAUSS(GAUSS)
@@ -1528,7 +1547,7 @@ c           END IF
         NofBH=NBH  ! - " -
            
         IF(NEWREG)THEN
-C           step=0
+C            step=0
             iwarning=0
             itemax=12
             itemax_used=0
@@ -1559,7 +1578,7 @@ C           step=0
 
         CALL FIND CHAIN INDICES
 
-        IF(IWR.GT.0)WRITE(6,1232)time,(INAME(KW),KW=1,N)
+C        IF(IWR.GT.0)WRITE(6,1232)time,(INAME(KW),KW=1,N)
         CALL INITIALIZE XC and WC
         CALL CONSTANTS OF MOTION(ENERGY,G0,ALAG)
         EnerGr=0 ! energy radiated away
@@ -1582,14 +1601,15 @@ C           step=0
         DO i=1,Nvar
             SY(i)=0
         END DO
-        IF(step.EQ.0.0) CALL Initial Stepsize(X,V,M,N,ee,step) ! New initial step determination
+        IF(step.LE.0.0) CALL Initial Stepsize(X,V,M,N,ee,step) ! New initial step determination
+            step = abs(step)
             stimex=step
             EPS=TOL
             NCALL=0
         END IF ! NEWREG
         KSTEPS=0
         nzero=0
-        stw=stimex
+C        stw=stimex
         step=min(abs(step),2*abs(stimex))
         stimex=0
 
@@ -1612,9 +1632,9 @@ C           step=0
             CALL Chain Transformation !
             WTTL=Wfunction() ! this may not be necessary, but probably OK.
             CALL Take Y from XC WC(Y,Nvar)
-            IF(IWR.GT.0) WRITE(6,1232)time+chtime,(INAME(KW),KW=1,N)
-
-1232        FORMAT(1X,g12.4,' I-CHAIN',20I3)
+C            IF(IWR.GT.0) WRITE(6,1232)time+chtime,(INAME(KW),KW=1,N)
+C
+C1232        FORMAT(1X,g12.4,' I-CHAIN',20I3)
         END IF ! MUST SWITCH
 
         f2=chtime-deltaT ! for exact time iteration
@@ -1623,7 +1643,7 @@ C           step=0
         x2=0.0
 
         DLT=DELTAT! for short
-        IF(CHTIME.LT.DLT.AND.(KSTEPS.LT.KSMX)
+        IF((CHTIME.LT.DLT).AND.(KSTEPS.LT.KSMX)
      &  .AND.(icollision.EQ.0))goto 777
 
 
@@ -1652,7 +1672,7 @@ C           step=0
                 CALL Iterate2ExactTime(Y,Nvar,deltaT,f1,d1,f2,d2,x1,x2)
             END IF
         END IF
-        IF(stimex.EQ.0.0)stimex=step
+        IF(stimex.LE.0.0)stimex=abs(step)
         CALL update x and v
         DO I=1,3
             spini(I)= spin(I)
@@ -1662,7 +1682,7 @@ C           step=0
 
         TIME=TIME+CHTIME
 
-        IF(chtime.LT.0.0)WRITE(6,*)time,chtime, '  t  cht <0!'
+        IF(chtime.LT.0.0) WRITE(6,*)time,chtime, '  t  cht <0!'
 
         RETURN
 
