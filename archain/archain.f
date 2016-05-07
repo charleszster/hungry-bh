@@ -378,12 +378,12 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         RSTAR = 1.0*2.25669073e-8   !stellar radius in pc
         RSTAR = RSTAR*(MSTAR)**0.8  !scale according to R/Rsun = (M/Msun)^0.8
 
-        tnext0=time+deltat
-        wknx=tnext0/deltat
-        knx=tnext0/deltat+0.1d0
-        tnext=knx*deltat
-        tstep=abs(tnext-time)
-        nmerger = 0        ! no mergers yet
+C        tnext0=time+deltat
+C        wknx=tnext0/deltat
+C        knx=tnext0/deltat+0.1d0
+C        tnext=knx*deltat
+C        tstep=abs(tnext-time)
+        tstep=deltat
 
  10     CONTINUE
 
@@ -416,7 +416,6 @@ c       Put into center-of-mass frame
 
 C       Check for collisions and merge particles
  11     IF (icollision.NE.0) THEN ! handle a collison
-                nmerger = nmerger + 1
                 CALL  Merge_i1_i2(time)   ! merge the two particles
         ENDIF
 
@@ -691,10 +690,6 @@ c         New value of the number of bodies.
      &           , VA(3*L)/14.90763847,' N=',N
      &     ,' remaining:',(M(k),k=1,N)
 
-C            IF(N.EQ.1)THEN! N.EQ.1!!!!!!!!!!!
-C                WRITE(6,*)' Only one body left!'
-C                STOP
-C            END IF
 
             RETURN
             END
@@ -732,21 +727,6 @@ C       NUMERICAL COEFFICIENTS
         VBC = 1792.45      !km/s
         VCC = 1506.52      !km/s
 
-C       INPUT PARAMETERS
-C        MBH1 = RAND(0)*1.e8
-C        MBH2 = RAND(0)*1.e8
-C        CALL GETGAUSS(GAUSS)
-C        VBH1(1) = GAUSS*1000.0
-C        CALL GETGAUSS(GAUSS)
-C        VBH1(2) = GAUSS*1000.0
-C        CALL GETGAUSS(GAUSS)
-C        VBH1(3) = GAUSS*1000.0
-C        CALL GETGAUSS(GAUSS)
-C        VBH2(1) = GAUSS*1000.0
-C        CALL GETGAUSS(GAUSS)
-C        VBH2(2) = GAUSS*1000.0
-C        CALL GETGAUSS(GAUSS)
-C        VBH2(3) = GAUSS*1000.0
 
         CALL GETGAUSS(GAUSS)
         SBH1(1) = GAUSS !E1 spin component -> S = a*G*MBH**2/c with a E {0,1}
@@ -1577,17 +1557,18 @@ C            step=0
         END IF
 
         CALL FIND CHAIN INDICES
-
-C        IF(IWR.GT.0)WRITE(6,1232)time,(INAME(KW),KW=1,N)
         CALL INITIALIZE XC and WC
         CALL CONSTANTS OF MOTION(ENERGY,G0,ALAG)
+
         EnerGr=0 ! energy radiated away
         gtime=1/ALAG
         do K=1,3
            CMX(K)=CMXX(K)
            CMV(K)=CMVX(K)
         end do
+
         CALL omegacoef
+
         STIME=0.0
         NEWREG=.FALSE.
         WTTL=Wfunction()
@@ -1597,7 +1578,9 @@ C        IF(IWR.GT.0)WRITE(6,1232)time,(INAME(KW),KW=1,N)
                 mmss=mmss+m(i)*m(j)
             END DO
         END DO
+
         CALL Take Y from XC WC (Y,Nvar)
+
         DO i=1,Nvar
             SY(i)=0
         END DO
@@ -1609,32 +1592,36 @@ C        IF(IWR.GT.0)WRITE(6,1232)time,(INAME(KW),KW=1,N)
         END IF ! NEWREG
         KSTEPS=0
         nzero=0
-C        stw=stimex
         step=min(abs(step),2*abs(stimex))
         stimex=0
 
 
 777     KSTEPS=KSTEPS+1
+
         CALL Take Y from XC WC (Y,Nvar)
         CALL Obtain Order of Y(SY)
+
         stime=0
         f1=chtime-deltaT ! for exact time
         d1=gtime
         dltime=-f1
+
         CALL take y from XC WC(Yold,Nvar)
         CALL DIFSYAB(Nvar,EPS,SY,step,stime,Y)
+
         I_switch=1
+
         CALL Put Y to XC WC  (Y,Nvar)
+
         IF(step.EQ.0.0)STOP
+
         CALL CHECK SWITCHING CONDITIONS(MUST SWITCH)
+
         IF(MUST SWITCH)THEN
             I_switch=0
             CALL Chain Transformation !
             WTTL=Wfunction() ! this may not be necessary, but probably OK.
             CALL Take Y from XC WC(Y,Nvar)
-C            IF(IWR.GT.0) WRITE(6,1232)time+chtime,(INAME(KW),KW=1,N)
-C
-C1232        FORMAT(1X,g12.4,' I-CHAIN',20I3)
         END IF ! MUST SWITCH
 
         f2=chtime-deltaT ! for exact time iteration
@@ -1645,8 +1632,6 @@ C1232        FORMAT(1X,g12.4,' I-CHAIN',20I3)
         DLT=DELTAT! for short
         IF((CHTIME.LT.DLT).AND.(KSTEPS.LT.KSMX)
      &  .AND.(icollision.EQ.0))goto 777
-
-
 
         IF(KSTEPS.LT.KSMX .AND.Ixc.GT.0.AND.icollision.EQ.0)THEN
         ! Integrate TO approximate EXACT OUTPUTTIME
@@ -1672,8 +1657,11 @@ C1232        FORMAT(1X,g12.4,' I-CHAIN',20I3)
                 CALL Iterate2ExactTime(Y,Nvar,deltaT,f1,d1,f2,d2,x1,x2)
             END IF
         END IF
+
         IF(stimex.LE.0.0)stimex=abs(step)
+
         CALL update x and v
+
         DO I=1,3
             spini(I)= spin(I)
             CMXX(I)=CMX(I)
