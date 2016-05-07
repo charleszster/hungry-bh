@@ -17,7 +17,8 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         COMMON/collision/icollision,ione,itwo,iwarning
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 G0(3),G(3),cmet(3),xw(3),vw(3),xwr(NMX3)
-     &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX), TA(NMX)
+     &   ,ai(NMX),ei(NMX),unci(NMX),Omi(NMX),ooi(NMX), TA(NMX),
+     &   MA_TEMP, TA_TEMP, T_AT_CTR
         REAL*8 PROB_TC(NMX),dPROB_TC(NMX),R_T,R_TC,RSTAR
         REAL*8 TIME1, TIME2, DELT, RGAL, VBH, EPOT, MCORE,deltaM
         LOGICAL NEWREG
@@ -25,6 +26,7 @@ C       TO COMPILE, USE gfortran -o archain SO_params.f gal_fns.f archain.f
         CHARACTER*15 OUTTIME
         INTEGER NOUT, DTOUT, LD, seed(12), NNEXTBH
         REAL*8  RNR, RNR2
+        REAL*8 phi, theta
 
         call srand(1)    !initialize RAND()
         DO I=1,12        !initialize RANDOM_NUMBER()
@@ -60,7 +62,7 @@ C        READ(5,*,err=999)MCL,RPL,RCORE,GTYPE  !MCL used to be read in from test
         EPS=tolerance
         ENER0=0
         NEWREG=.TRUE.
-        KSMX=10000000 ! only this many steps without RETURN
+        KSMX=1000000 ! only this many steps without RETURN
         NOUT = 0 !count outputs
 
 C       for tidal mass gain
@@ -101,16 +103,22 @@ C        END DO
         NA = NA+1
         I = 2
         DO WHILE (MA(I-1).GT.0)
-            WRITE(*,*) MA(I-1), TA(I-1)
-           READ(5,*) MA(I), TA(I)
-           IF (MA(I).GT.0) THEN
-                NA = NA+1
-                TA(I) = (TA(I) + T0)/14.90763847
-           END IF
-           I = I+1
+C           WRITE(*,*) MA(I-1), TA(I-1)
+           READ(5,*) MA_TEMP, TA_TEMP, T_AT_CTR !MA(I), TA(I)
+           IF (MA_TEMP.GT.0) THEN
+              IF (T_AT_CTR .LE.(TMAX*14.9763847*100.0)) THEN   !infall criterion
+                 NA = NA+1
+                 MA(I) = MA_TEMP
+                 TA(I) = (TA_TEMP + T0)/14.90763847
+                 write(*,*) MA(I), TA(I)
+                 I = I+1
+              END IF
+            ELSE
+                GOTO 778
+            END IF
         END DO
 
-        TIME=TA(2)
+778     TIME=TA(2)
         TMYR = TIME*14.90763847
 
         MA(1) = cbhm(TMYR)	!THIS IS THE MASS OF THE CENTRAL BLACK HOLE THAT IS GOING TO INCREASE IN TIME
@@ -124,18 +132,37 @@ C        END DO
         WRITE(*,*) pe, RPL, eff_rad, MCL
 
         RGAL = eff_rad
-        XA(4) = eff_rad
-        XA(5) = 0.0
-        XA(6) = 0.0
+C        XA(4) = eff_rad
+C        XA(5) = 0.0
+C        XA(6) = 0.0
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+        phi=rand()*2.*PI !azimuth angle
+        theta=rand()*PI  !polar angle
+        XA(4)=eff_rad*sin(theta)*cos(phi)
+        XA(5)=eff_rad*sin(theta)*sin(phi)
+        XA(6)=eff_rad*cos(theta)
+        write(*,*) XA(4), XA(5), XA(6), SQRT(XA(4)**2+XA(5)**2+XA(6)**2)
+     &  , eff_rad
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
         IF (RGAL>0) THEN
            VBH = sqrt(GALMASS(RGAL)/RGAL)
         ELSE
            VBH = 0.0
         END IF
 
-        VA(4) = 0.0
-        VA(5) = VBH
-        VA(6) = 0.0
+C        VA(4) = 0.0
+C        VA(5) = VBH
+C        VA(6) = 0.0
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+        phi=rand()*2.*PI !azimuth angle
+        theta=rand()*PI  !polar angle
+        VA(4)=VBH*sin(theta)*cos(phi)
+        VA(5)=VBH*sin(theta)*sin(phi)
+        VA(6)=VBH*cos(theta)
+        write(*,*) VA(4), VA(5), VA(6), SQRT(VA(4)**2+VA(5)**2+VA(6)**2)
+     &  , VBH
+C        STOP
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
         WRITE(*,*) RGAL, VBH, MA(1), MA(2)
 
@@ -242,7 +269,7 @@ C       Include diffusion through encounters with stars
 
         WRITE(6,123)TIME*14.90763847!  /twopi
      & ,log((Tkin-ENERGY-EnerGR)/Upot),dSkin/dSpot-1,am_error!logH = the primary constant (=0!)
-     & ,N, MCL, RPL, RCORE, CMX(1)  ! print time, logH, N (of bodies left)
+     & ,N, MCL, RPL, CMX(1), RCORE  ! print time, logH, N (of bodies left)
         CALL FLUSH(6)
 123     FORMAT(1x,'T: ',1p,g20.6,' dE/U=',1p,g10.2,
      &   ' dSDOt/sDOtU=',1p,g10.2,
@@ -250,8 +277,8 @@ C       Include diffusion through encounters with stars
      &   ' Nb=',0p,1x,i3,
      &   '   MCL=',1p,g10.2,
      &   '   RPL=',1p,g10.2,
-     &   '   RCORE=',1p,g10.2,
-     &   '   CMXA=',1p,g10.2)
+     &   '   CMX=',1p,g10.2,
+     &   '   RCORE=',1p,g10.2)
 
 200     CONTINUE
 
@@ -280,17 +307,33 @@ C  short output to save space
             CALL find_RPL_newt(RPL)
             pe = pe_func(RCORE)
 
+
             IF (NA.GE.NNEXTBH) THEN
                 IF (TIME.GE.TA(NNEXTBH)) THEN
                     N = N+1
                     Nbh = N
-                    XA(3*NNEXTBH-2) = eff_rad + cmxa(1)
-                    XA(3*NNEXTBH-1) = 0.0 + cmxa(2)
-                    XA(3*NNEXTBH) = 0.0 + cmxa(3)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+C                    XA(3*NNEXTBH-2) = eff_rad + cmxa(1)
+C                    XA(3*NNEXTBH-1) = 0.0 + cmxa(2)
+C                    XA(3*NNEXTBH) = 0.0 + cmxa(3)
+                    phi=rand()*2.*PI !azimuth angle
+                    theta=rand()*PI  !polar angle
+                    XA(3*NNEXTBH-2)=eff_rad*sin(theta)*cos(phi) +
+     &                              cmxa(1)
+                    XA(3*NNEXTBH-1)=eff_rad*sin(theta)*sin(phi) +
+     &                              cmxa(2)
+                    XA(3*NNEXTBH)=eff_rad*cos(theta) + cmxa(3)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
                     VBH = sqrt(GALMASS(eff_rad)/eff_rad)*rand(0)
-                    VA(3*NNEXTBH-2) = 0.0 + cmva(1)
-                    VA(3*NNEXTBH-1) = VBH + cmva(2)
-                    VA(3*NNEXTBH) = 0.0 + cmva(3)
+C                    VA(3*NNEXTBH-2) = 0.0 + cmva(1)
+C                    VA(3*NNEXTBH-1) = VBH + cmva(2)
+C                    VA(3*NNEXTBH) = 0.0 + cmva(3)
+                    phi=rand()*2.*PI !azimuth angle
+                    theta=rand()*PI  !polar angle
+                    VA(3*NNEXTBH-2)=VBH*sin(theta)*cos(phi) + cmva(1)
+                    VA(3*NNEXTBH-1)=VBH*sin(theta)*sin(phi) + cmva(2)
+                    VA(3*NNEXTBH)=VBH*cos(theta) + cmva(3)
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
                     index4output(N)=NNEXTBH
                     NNEXTBH = NNEXTBH + 1
                 END IF
@@ -323,6 +366,7 @@ C  short output to save space
         INCLUDE 'archain.h'
         COMMON/collision/icollision,ione,itwo,iwarning
         COMMON/outputindex/index4output(200)
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 cmet(3),spini(3)
         REAL*8 RGAL, RHO, SIGMA
         REAL*8 PROB_TC(NMX),SCAP,R_T,LBD
@@ -338,7 +382,7 @@ C  short output to save space
         wknx=tnext0/deltat
         knx=tnext0/deltat+0.1d0
         tnext=knx*deltat
-        tstep=tnext-time
+        tstep=abs(tnext-time)
         nmerger = 0        ! no mergers yet
 
  10     CONTINUE
@@ -399,7 +443,7 @@ C       ENCOUNTER PROBABILITY COMPUTATION FOR TIDAL MASS GAIN
             RGAL = SQRT((XA(3*I-2))**2+(XA(3*I-1))**2
      &                   +(XA(3*I))**2+4.0*RS*RS)
 C           Handle escape of particles -- set escape radius here!
-            IF (RGAL.gt.1000000.0) THEN
+            IF (RGAL.gt.RPL) THEN   !1000000.0
                 CALL ESCAPE(J)
             END IF
 
@@ -483,11 +527,14 @@ C           Handle mergers of two particles - include kicks here!
 
             INCLUDE 'archain.h'
             REAL*8 SM(NMX),XR(NMX3),XDR(NMX3),xwr(nmx3),ywr(nmx3)
-            REAL*8 XKICK(3), VBH1(3), VBH2(3), MBH1, MBH2
+            REAL*8 XKICK(3), VBH1(3), VBH2(3), MBH1, MBH2, RSEP
             COMMON/collision/icollision,Ione,Itwo,iwarning
             COMMON/outputindex/index4output(200)
 
             SAVE
+
+            i1wr=index4output(ione)
+            i2wr=index4output(itwo)
 
             L=0
             WRITE(6,*)' Masses initially:',(M(k),k=1,N)
@@ -498,6 +545,9 @@ C           Handle mergers of two particles - include kicks here!
                     XDR(3*I-3+K)=V(3*I-3+K)
                 END DO
             END DO
+
+            RSEP = SQRT((X(3*Ione-2)-X(3*Itwo-2))**2+
+     &       (X(3*Ione-1)-X(3*Itwo-1))**2+(X(3*Ione)-X(3*Itwo))**2)
 
 C           ADD KICK to Ione
             MBH1 = M(Ione)
@@ -557,13 +607,16 @@ c         New value of the number of bodies.
 8           CONTINUE
 
             icollision=0
-            i1wr=index4output(ione)
-            i2wr=index4output(itwo) !?? wrong ?? because already changed (above)
-            
+
             WRITE(6,*)' Merge:',ione,itwo,Myks,Mkax,' N, NBH=',N,NofBH
      &     ,' masses ',(M(k),k=1,N)
-            WRITE(67,*)' merge ',
-     &  ione,itwo,i1wr,i2wr,M(ione),m(itwo),M(i1wr),M(i2wr),(M(j),j=1,N)
+            WRITE(67,*)' Merge:', time*14.90763847,
+     &           ione,itwo,i1wr,i2wr,MBH1,MBH2,
+     &           RSEP,(XKICK(j)/14.90763847,j=1,3)
+     &          ,VBH1(1)/14.90763847,VBH1(2)/14.90763847,
+     &          VBH1(3)/14.90763847,VBH2(1)/14.90763847
+     &          ,VBH2(2)/14.90763847,VBH2(3)/14.90763847,
+     &           'remaining:',(M(j),j=1,N)
 
             ione=0
             itwo=0
@@ -587,8 +640,11 @@ C           Handle escape of particle
             INCLUDE 'archain.h'
             REAL*8 SM(NMX),XR(NMX3),XDR(NMX3)
             COMMON/outputindex/index4output(200)
+            INTEGER L
 
             SAVE
+
+            L = index4output(Ione)
 
             WRITE(6,*)' Masses initially:',(M(k),k=1,N)
             DO I=1,ione-1
@@ -625,8 +681,15 @@ c         New value of the number of bodies.
 7               CONTINUE
 8           CONTINUE
 
-            WRITE(6,*)' Escape:',ione,' N, NBH=',N,NofBH
-     &     ,' masses ',(M(k),k=1,N)
+            WRITE(6,*)' Escape:',time*14.90763847,ione,L,
+     &      MA(L), VA(3*L-2)/14.90763847, VA(3*L-1)/14.90763847
+     &           , VA(3*L)/14.90763847,' N=',N
+     &     ,' remaining:',(M(k),k=1,N)
+
+            WRITE(67,*)' Escape:',time*14.90763847,ione,L,
+     &      MA(L), VA(3*L-2)/14.90763847, VA(3*L-1)/14.90763847
+     &           , VA(3*L)/14.90763847,' N=',N
+     &     ,' remaining:',(M(k),k=1,N)
 
 C            IF(N.EQ.1)THEN! N.EQ.1!!!!!!!!!!!
 C                WRITE(6,*)' Only one body left!'
@@ -830,7 +893,7 @@ C        WRITE(*,*) "VPAR: ", VPAR
         INCLUDE 'archain.h'
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 ACC(*)
-        REAL*8 RGAL2, ACCEL
+        REAL*8 RGAL2, ACCEL, RS
         SAVE
 
 C       Physical positions and velocities (in the inertial coordinate)
@@ -845,9 +908,11 @@ C---  init acc
 
         IF (GTYPE.EQ.1) THEN   !JERRY PROFILE
             DO  I=1,N
+                RS=2.d0*(M(I))/Clight**2 !Softening of order 2xSchwarzschild radius
+
                 RGAL2 = (X(3*I-2)+CMX(1)+CMXA(1))**2+(X(3*I-1)
      &              +CMX(2)+CMXA(2))**2+(X(3*I)+CMX(3)
-     &              +CMXA(3))**2
+     &              +CMXA(3))**2 +4.0*RS*RS
 
                 ACC(3*I-2) = SO_r_ddot(SQRT(RGAL2))*(X(3*I-2)+CMX(1)+
      &                       CMXA(1))/SQRT(RGAL2)
@@ -955,6 +1020,8 @@ C       Calculate diffusion coefficients assuming velocity isotropy
           GALRH = 1.305*RPL
         ENDIF
 
+        IF (DT.LE.0.0) GOTO 11
+
         DO J=1,N
             I = index4output(J)
             RS=2.d0*(MA(I))/Clight**2 !Softening of order 2xSchwarzschild radius
@@ -965,24 +1032,24 @@ C       Calculate diffusion coefficients assuming velocity isotropy
             SIGMA = GALSIG(RGAL)
 
 C           Make correction to local velocity dispersion based on enclosed mass from BHs
-            Menclosed = 0.0
+C            Menclosed = 0.0
             DO K=1,N
-                L = index4output(K)
-                RGALENC = SQRT((XA(3*L-2))**2+(XA(3*L-1)
-     &                 )**2+(XA(3*L))**2)
-                IF (RGALENC.LE.RGAL) THEN
-                    Menclosed = Menclosed + MA(L)
+                IF (K.NE.J) THEN
+                    L = index4output(K)
+                    RGALENC = SQRT((XA(3*L-2)-XA(3*I-2))**2
+     &                   +(XA(3*L-1)-XA(3*I-1))**2
+     &                   +(XA(3*L)-XA(3*I))**2)
+C           MAKE CENTER OF MASS HERE?
+                    SIGMA = SQRT(SIGMA**2 + MA(L)/RGALENC)
                 ENDIF
             END DO
-
-            SIGMA = SQRT(SIGMA**2 + 0.5*Menclosed/RGAL) !Galactic velocity dispersion plus dispersion from enclosed BH mass
 
             vx = VA(3*I-2)
             vy = VA(3*I-1)
             vz = VA(3*I)
 
 C           velocity of black hole + velocity dispersion to get mean encounter velocity
-            VBH = SQRT(vx**2+vy**2+vz**2) !+SIGMA**2)
+            VBH = SQRT(vx**2+vy**2+vz**2+1000.)  !softening of the order of sqrt(1000)/14.9 km/s
 
 C            WRITE(*,*) sqrt(VX*VX+VY*VY+VZ*VZ)/14.90763847,
 C     &      sqrt(V(3*I-2)*V(3*I-2)+V(3*I-1)*V(3*I-1)+V(3*I)*V(3*I))
@@ -991,17 +1058,15 @@ C     &      /14.90763847, VBH/14.90763847
 
             CHI = VBH/(1.414213562*SIGMA)
 
-            BINARYCUTOFF = 2.0*SIGMA !IF BH IS FASTER THAN LOCAL VEL DISP, SWITCH OFF DIFFUSION
-
-            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
+            CLAMBDA = LOG(RGAL*(VBH**2+SIGMA**2)/MA(I)) !Hoffman & Loeb (2007)
+C            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
             IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
-            IF (VBH.GT.BINARYCUTOFF) CLAMBDA = 0.0
 
             ERF_TEMP = ERF_NR(CHI)
             FCHI = ERF_TEMP - 2.0*CHI/1.772453851*EXP(-CHI*CHI)
             FCHI = 0.5*FCHI*CHI**(-2)
 
-            IF (SIGMA.GT.0.0) THEN
+            IF ((SIGMA.GT.0.0)) THEN
                 GAMMAC = 4.0*PI*CLAMBDA*RHO/SIGMA
                 DVP = -GAMMAC*FCHI/SIGMA*(MA(I)+MSTAR)
                 DVP2 = SQRT(2.0)*GAMMAC*FCHI/CHI*MSTAR
@@ -1019,6 +1084,7 @@ C     &      /14.90763847, VBH/14.90763847
                 FBOT = 0.0
             ENDIF
 
+
 C           draw random vector
             x1 = rand(0)-0.5
             y1 = rand(0)-0.5
@@ -1030,16 +1096,22 @@ C           draw random vector
 
             vp = SQRT(vxp*vxp+vyp*vyp+vzp*vzp)
 
+            IF (VP.EQ.0.0) THEN
+                vxp = rand(0)-0.5
+                vyp = rand(0)-0.5
+                vzp = rand(0)-0.5
+                vp = SQRT(vxp*vxp+vyp*vyp+vzp*vzp)
+            ENDIF
+
 C           unit vector perpendicular to direction of motion
             vxp = vxp/vp
             vyp = vyp/vp
             vzp = vzp/vp
 *
-            VBH2 = vx**2+vy**2+vz**2
+            VBH2 = vx**2+vy**2+vz**2+1000.
             VBH = sqrt(VBH2)
             DELTAE = 0.5*MA(I)*VBH2
 *
-
             VX = VX + FP*VX/VBH + FBOT*vxp
             VY = VY + FP*VY/VBH + FBOT*vyp
             VZ = VZ + FP*VZ/VBH + FBOT*vzp
@@ -1053,7 +1125,10 @@ C           Calculate energy change and test for too large kicks
             else
                WRITE(*,*) 'HUGE KICK:',RGAL,RHO,
      &               SIGMA/14.90763847,VBH/14.90763847
-     &              ,RGAL, GALRH, MCL, MA(I)
+     &         , GALRH, MCL, MA(I)
+                IF (RGAL.GT.RCORE) THEN
+                    STOP
+                ENDIF
                CALL GETGAUSS(GAUSS)
                VX = VBH/SQRT(3.0)*GAUSS
                CALL GETGAUSS(GAUSS)
@@ -1088,7 +1163,7 @@ C            write(*,*) "DELTAW = ",DELTAW
           RPL = 1.0/(1.0/RPL+3.3953054526*DELTAW/(MCL*MCL))
         ENDIF
 
-        RETURN
+11      RETURN
 
         END
 
@@ -1150,12 +1225,15 @@ C            write(*,*) "DELTAW = ",DELTAW
         REAL*8 FUNCTION GALSIG(R)
 
         IMPLICIT REAL*8 (A-H,M,O-Z)
+        PARAMETER (MSTAR=0.45, PI=3.141592653589793)
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 R, r_lim
 
         IF (GTYPE.EQ.1) THEN
             r_lim = sqrt(RCORE*RPL)
-            IF (R.LE.r_lim) THEN
+            IF (R.LE.0.5*RCORE) THEN
+                GALSIG = SQRT(6.*MCL*(PI*PI/8.-1.)/(PI*RPL)) !eq. 11 in Stone & Ostriker (internal units)
+            ELSEIF (R.LE.r_lim) THEN
                 GALSIG = sigma_near(R)*14.90763847 !sigma_near(R) is in astrophysical units, hence transformation to internal units
             ELSE
                 GALSIG = sigma_far(R)*14.90763847
@@ -1469,7 +1547,7 @@ c           END IF
         NofBH=NBH  ! - " -
            
         IF(NEWREG)THEN
-C           step=0
+C            step=0
             iwarning=0
             itemax=12
             itemax_used=0
@@ -1500,7 +1578,7 @@ C           step=0
 
         CALL FIND CHAIN INDICES
 
-        IF(IWR.GT.0)WRITE(6,1232)time,(INAME(KW),KW=1,N)
+C        IF(IWR.GT.0)WRITE(6,1232)time,(INAME(KW),KW=1,N)
         CALL INITIALIZE XC and WC
         CALL CONSTANTS OF MOTION(ENERGY,G0,ALAG)
         EnerGr=0 ! energy radiated away
@@ -1523,14 +1601,15 @@ C           step=0
         DO i=1,Nvar
             SY(i)=0
         END DO
-        IF(step.EQ.0.0) CALL Initial Stepsize(X,V,M,N,ee,step) ! New initial step determination
+        IF(step.LE.0.0) CALL Initial Stepsize(X,V,M,N,ee,step) ! New initial step determination
+            step = abs(step)
             stimex=step
             EPS=TOL
             NCALL=0
         END IF ! NEWREG
         KSTEPS=0
         nzero=0
-        stw=stimex
+C        stw=stimex
         step=min(abs(step),2*abs(stimex))
         stimex=0
 
@@ -1553,9 +1632,9 @@ C           step=0
             CALL Chain Transformation !
             WTTL=Wfunction() ! this may not be necessary, but probably OK.
             CALL Take Y from XC WC(Y,Nvar)
-            IF(IWR.GT.0) WRITE(6,1232)time+chtime,(INAME(KW),KW=1,N)
-
-1232        FORMAT(1X,g12.4,' I-CHAIN',20I3)
+C            IF(IWR.GT.0) WRITE(6,1232)time+chtime,(INAME(KW),KW=1,N)
+C
+C1232        FORMAT(1X,g12.4,' I-CHAIN',20I3)
         END IF ! MUST SWITCH
 
         f2=chtime-deltaT ! for exact time iteration
@@ -1564,7 +1643,7 @@ C           step=0
         x2=0.0
 
         DLT=DELTAT! for short
-        IF(CHTIME.LT.DLT.AND.(KSTEPS.LT.KSMX)
+        IF((CHTIME.LT.DLT).AND.(KSTEPS.LT.KSMX)
      &  .AND.(icollision.EQ.0))goto 777
 
 
@@ -1593,7 +1672,7 @@ C           step=0
                 CALL Iterate2ExactTime(Y,Nvar,deltaT,f1,d1,f2,d2,x1,x2)
             END IF
         END IF
-        IF(stimex.EQ.0.0)stimex=step
+        IF(stimex.LE.0.0)stimex=abs(step)
         CALL update x and v
         DO I=1,3
             spini(I)= spin(I)
@@ -1603,7 +1682,7 @@ C           step=0
 
         TIME=TIME+CHTIME
 
-        IF(chtime.LT.0.0)WRITE(6,*)time,chtime, '  t  cht <0!'
+        IF(chtime.LT.0.0) WRITE(6,*)time,chtime, '  t  cht <0!'
 
         RETURN
 
