@@ -287,9 +287,12 @@ C       Include diffusion through encounters with stars
 *           OUTPUT TO FILES
 **************************************
 
+C   MCORE
+        MCORE = GALMASS(RCORE)
 
 C  short output to save space
-        WRITE(66,234) TIME*14.90763847,MCL,RPL,RCORE,
+        WRITE(66,234) TIME*14.90763847,MCL,RPL,MCORE,
+     &    RCORE,
      &    (Ma(k), SQRT(XA(3*k-2)**2+XA(3*k-1)**2
      &                   +XA(3*k)**2), k=1,na)
 
@@ -988,7 +991,7 @@ C       Calculate diffusion coefficients assuming velocity isotropy
 
         REAL*8 vx, vy, vz, DV(3), VBH, VBH2
         REAL*8 GALRH, GMASS, RHO, SIGMA, RS, RGAL
-        REAL*8 CHI, CLAMBDA, GAMMAC, FCHI, MCORE
+        REAL*8 CHI, CLAMBDA, GAMMAC, FCHI
         REAL*8 SIMGA0
 
         SAVE
