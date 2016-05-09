@@ -1044,7 +1044,7 @@ C            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
             IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
 
 C           Check if velocity of BH is larger than local escape velocity (indicates binary)
-            VESC = 2.0*SIGMA0
+            VESC = SQRT(6.0)*SIGMA0  !turn local one-dimensional velocity dispersion into escape velocity
             IF (VBH.GT.VESC) CLAMBDA = 0.0
 
             ERF_TEMP = ERF_NR(CHI)
