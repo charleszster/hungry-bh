@@ -1044,10 +1044,10 @@ C     &      /14.90763847, VBH/14.90763847
 
             CLAMBDA = LOG(RGAL*(VBH**2+SIGMA**2)/MA(I)) !Hoffman & Loeb (2007)
 C            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
-            IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
+            IF (CLAMBDA.LT.1.0) CLAMBDA = 1.0
 
 C           Check if velocity of BH is larger than local escape velocity (indicates binary)
-            VESC = SQRT(6.0)*SIGMA0  !turn local one-dimensional velocity dispersion into escape velocity
+            VESC = SQRT(-2.0*GALPOT(RGAL))  !turn potential energy into escape velocity
             IF (VBH.GT.VESC) CLAMBDA = 0.0
 
             ERF_TEMP = ERF_NR(CHI)
@@ -1197,13 +1197,42 @@ C            write(*,*) "DELTAW = ",DELTAW
         IF (GTYPE.EQ.1) THEN
             GALRHO = rho_c()/((1+R**2./RCORE**2.)*(1+R**2./RPL**2.))
         ELSE
-            GALRHO = 3.0/(4.0*PI*RPL**3)*MCL*
+            GALRHO = -MCL/RPL*1.0/SQRT(1.0+R**2/RPL**2)
+        ENDIF
+
+        RETURN
+
+        END
+
+
+
+************************************************************
+************************************************************
+
+
+
+        REAL*8 FUNCTION GALPOT(R)
+
+        IMPLICIT REAL*8 (A-H,M,O-Z)
+        PARAMETER (MSTAR=0.45, PI=3.141592653589793)
+        COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
+        REAL*8 R
+
+        !ADD GTYPE DISTINCTION HERE
+        IF (GTYPE.EQ.1) THEN
+            GALPOT = -4.0*PI*rho_c()*RCORE**2*RPL**2/
+     &       (RPL**2-RCORE**2)*(RPL/R*atan(R/RPL)
+     &       -RCORE/R*atan(R/RCORE)
+     &      +0.5*LOG((R*R+RPL*RPL)/(R*R+RCORE*RCORE)))
+        ELSE
+            GALPOT = 3.0/(4.0*PI*RPL**3)*MCL*
      &          ((1.0+(R/RPL)**2)**(-2.5))
         ENDIF
 
         RETURN
 
         END
+
 
 
 ************************************************************
