@@ -1048,7 +1048,7 @@ C            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
 
 C           Check if velocity of BH is larger than local escape velocity (indicates binary)
             VESC = SQRT(-2.0*GALPOT(RGAL))  !turn potential energy into escape velocity
-            IF (VBH.GT.VESC) CLAMBDA = 0.0
+            IF (VBH.GT.VESC) CLAMBDA = 0.0 !CLAMBDA*EXP(-(VBH/VESC-1.0))
 
             ERF_TEMP = ERF_NR(CHI)
             FCHI = ERF_TEMP - 2.0*CHI/1.772453851*EXP(-CHI*CHI)
@@ -1218,7 +1218,6 @@ C            write(*,*) "DELTAW = ",DELTAW
         COMMON/galaxy/MCL,RPL,RCORE,eff_rad,pe,GTYPE
         REAL*8 R
 
-        !ADD GTYPE DISTINCTION HERE
         IF (GTYPE.EQ.1) THEN
             GALPOT = -4.0*PI*rho_c()*RCORE**2*RPL**2/
      &       (RPL**2-RCORE**2)*(RPL/R*atan(R/RPL)
