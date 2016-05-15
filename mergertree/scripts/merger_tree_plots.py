@@ -31,9 +31,11 @@ def get_masses(orbiting_bhs, smbh_cluster, key):
     central_bh_mass = []
     with open(os.path.join(cluster_folder, 'Central_BH_mass_galaxy_%s' % (key)), 'wb') as cbh:
         cbh.write('Time (Gyr)\tMass (Msun)\n')
+#        print orbiting_bhs
         for time_slice in orbiting_bhs:
             redshift = time_slice[0]
             bhs = time_slice[2]
+#            print bhs
             mass_this_redshift = 0.
             for line in smbh_cluster:
                 smbh_redshift = line[0]
@@ -166,7 +168,8 @@ def run():
 
     galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
     galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
-    print galaxies_masses['65']
+#    print galaxies_masses['1']
+    print galaxies_by_id['1']
 
     analyze_clusters.plot_galaxies_all_masses(galaxies_masses)
     '''

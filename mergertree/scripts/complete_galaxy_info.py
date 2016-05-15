@@ -23,23 +23,24 @@ t0 = 1.56537653e+03 #Myr
 
 def write_galaxies_final_masses(galaxies_masses):
     galaxies_masses_list = []
+    print galaxies_masses['1']
     for galaxy_nums, galaxy_data in galaxies_masses.iteritems():
         if galaxy_data[1][-1] > 13.72:
-            galaxies_masses_list.append([galaxy_nums, galaxy_data[2][-1]])
+            galaxies_masses_list.append([galaxy_nums, galaxy_data[2][-1], galaxy_data[0][0]])
     galaxies_masses_list = sorted(galaxies_masses_list, key=lambda l: l[1], reverse=True)
     with open(os.path.join(cluster_folder, 'galaxies_final_masses.txt'), 'wb') as f:
-        f.write('Galaxy ID\t\tFinal Galaxy Mass (Msun)\n')
+        f.write('Galaxy ID\t\tFinal Galaxy Mass (Msun)\tGalaxy Birth (z)\n')
         for line in galaxies_masses_list:
-            f.write('%s\t\t\t%.0f\n' % (line[0].zfill(4), line[1]))
+            f.write('%s\t\t\t%.0f\t\t\t\t%.2f\n' % (line[0].zfill(4), line[1], line[2]))
 
 def get_galaxy_mass_data(galaxies_masses, galaxy_num):
     galaxy_mass_coeffs = analyze_clusters.curve_fit_any_galaxy_mass(galaxies_masses, galaxy_num)
-    print 'Galaxy Mass Coefficients (10**(a*t**7. + b*t**6. + c*t**5. + d*t**4. + e*t**3. + f*t**2. + g*t + h)), t in Gyr:'
-    print galaxy_mass_coeffs, '\n\n'
+#    print 'Galaxy Mass Coefficients (10**(a*t**7. + b*t**6. + c*t**5. + d*t**4. + e*t**3. + f*t**2. + g*t + h)), t in Gyr:'
+#    print galaxy_mass_coeffs, '\n\n'
     t_s = np.linspace(galaxies_masses[galaxy_num][1][0], galaxies_masses[galaxy_num][1][-1], 5000)
     masses_fitted = [analyze_clusters.poly_func(t, *tuple(galaxy_mass_coeffs)) for t in t_s]
     masses_fitted = [10**y for y in masses_fitted]
-    return t_s, masses_fitted
+    return t_s, masses_fitted, galaxy_mass_coeffs
 
 def get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster, galaxy_num):
     galaxy = [line for line in galaxies_cluster_no_bad_z if line[2] == int(galaxy_num)]
@@ -49,18 +50,33 @@ def get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster, galaxy_n
     central_bh_mass = np.array(central_bh_mass)
     central_bh_mass_coeffs, central_bh_mass_fitted = merger_tree_plots.curve_fit_central_bh_masses(galaxy_num,
                                                                                                    central_bh_mass)
-    print 'Central Black Hole Mass Coefficients 10**((a*np.exp(b/t))), t in Gyr:'
-    print central_bh_mass_coeffs, '\n\n'
-    return central_bh_mass, central_bh_mass_fitted
+#    print 'Central Black Hole Mass Coefficients 10**((a*np.exp(b/t))), t in Gyr:'
+#    print central_bh_mass_coeffs, '\n\n'
+    return central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs
 
 def get_stellar_mass_growth(galaxies_by_id, galaxy_num):
     time = [time_slice[1]*1.e3 for time_slice in galaxies_by_id[galaxy_num]] 
     stellar_mass = [time_slice[3] for time_slice in galaxies_by_id[galaxy_num]]
     stellar_mass_coefficients = galaxies_star_mass.get_func_coeffs(time, stellar_mass)
-    print 'Stellar Mass Growth Coefficients 10**(a*t**7. + b*t**6. + c*t**5. + d*t**4. + e*t**3. + f*t**2. + g*t + h), t in Myr:'
-    print stellar_mass_coefficients
+#    print 'Stellar Mass Growth Coefficients 10**(a*t**7. + b*t**6. + c*t**5. + d*t**4. + e*t**3. + f*t**2. + g*t + h), t in Myr:'
+#    print stellar_mass_coefficients
     stellar_mass_fitted = [10.**(galaxies_star_mass.poly_func(t, *tuple(stellar_mass_coefficients))) for t in time]
     return time, stellar_mass, stellar_mass_coefficients, stellar_mass_fitted
+
+def output_coeffs_for_achain_h(galaxy_num, central_bh_mass_coeffs, galaxy_mass_coeffs, stellar_mass_coefficients):
+    print 'C*********Parameters used for calculating the central black hole mass (mbch*), galaxy scale mass (mg*) and', 
+    print 'stellar mass (sm*) for GALAXY %s' % (galaxy_num)
+    print 'C      PARAMETER(mbch1=%.8f, mbch2=%.8f) !central bh mass parameters for Galaxy %s' % \
+                                                      (central_bh_mass_coeffs[0], central_bh_mass_coeffs[1], galaxy_num)
+    print 'C      PARAMETER(mg1=%.8e,mg2=%.8e,' % (galaxy_mass_coeffs[0], galaxy_mass_coeffs[1])
+    print 'C     &          mg3=%.8e,mg4=%.8f,' % (galaxy_mass_coeffs[2], galaxy_mass_coeffs[3])
+    print 'C     &          mg5=%.8f,mg6=%.8f,'  % (galaxy_mass_coeffs[4], galaxy_mass_coeffs[5])
+    print 'C     &          mg7=%.8f,mg8=%.8f)' % (galaxy_mass_coeffs[6], galaxy_mass_coeffs[7])
+    print 'C      PARAMETER(sm1=%.8e, sm2=%.8e,' % (stellar_mass_coefficients[0], stellar_mass_coefficients[1])
+    print 'C     &          sm3=%.8e, sm4=%.8e,' % (stellar_mass_coefficients[2], stellar_mass_coefficients[3])
+    print 'C     &          sm5=%.8e, sm6=%.8e,' % (stellar_mass_coefficients[4], stellar_mass_coefficients[5])
+    print 'C     &          sm7=%.8e, sm8=%.8f)' % (stellar_mass_coefficients[6], stellar_mass_coefficients[7])
+    print 'C***********************************************************************************************************'
 
 def plot_all_data(t_s, masses_fitted, galaxies_masses, galaxy_num, central_bh_mass, central_bh_mass_fitted, time,
                                                                                      stellar_mass, stellar_mass_fitted):
@@ -129,14 +145,17 @@ def run():
     galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
     galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
 #    write_galaxies_final_masses(galaxies_masses)
-    galaxy_num = '1'
-    t_s, masses_fitted = get_galaxy_mass_data(galaxies_masses, galaxy_num)
 
-    central_bh_mass, central_bh_mass_fitted = get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster,
+    galaxy_num = '65'
+    t_s, masses_fitted, galaxy_mass_coeffs = get_galaxy_mass_data(galaxies_masses, galaxy_num)
+
+    central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs = \
+                                            get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster,
                                                                                                              galaxy_num)
     time, stellar_mass, stellar_mass_coefficients, stellar_mass_fitted = get_stellar_mass_growth(galaxies_by_id,
                                                                                                              galaxy_num)
-    
+    output_coeffs_for_achain_h(galaxy_num, central_bh_mass_coeffs, galaxy_mass_coeffs, stellar_mass_coefficients)
+
     plot_all_data(t_s, masses_fitted, galaxies_masses, galaxy_num, central_bh_mass, central_bh_mass_fitted, time,
                                                                                      stellar_mass, stellar_mass_fitted)
     read_orbiting_bhs(galaxy_num, stellar_mass_coefficients)

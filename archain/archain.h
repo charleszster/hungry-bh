@@ -41,7 +41,6 @@ C*********Parameters used for calculating the central black hole mass (mbch*), g
      &          sm7=1.72244648e-03, sm8=9.60556175)
 C***********************************************************************************************************************
 
-
 C*********Parameters used for calculating the central black hole mass (mbch*), galaxy scale mass (mg*) and stellar mass (sm*) for GALAXY 291
 C      PARAMETER(mbch1=9.56598366, mbch2=-0.9226219) !central bh mass parameters for Galaxy 291
 C      PARAMETER(mg1=1.21025260e-06,mg2=-6.63747850e-05,

@@ -7,17 +7,17 @@ import os
 #Ω0: Total Matter Density
 #ΩΛ0: Cosmological Constant
 
-#plots_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism', 'mergertree',
-#                           'plots')
+plots_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism', 'mergertree',
+                           'plots')
 
-plots_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Cannibalism', 'mergertree',
-                            'plots')
+#plots_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Cannibalism', 'mergertree',
+#                            'plots')
 
-#cluster_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism_code', 'mergertree',
-#                             'cluster_files')
+cluster_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Columbia', 'Ostriker', 'Cannibalism_code', 'mergertree',
+                             'cluster_files')
 
-cluster_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Cannibalism', 'mergertree',
-                              'cluster_files')
+#cluster_folder = os.path.join(os.path.expanduser('~'), 'Dropbox', 'Cannibalism', 'mergertree',
+#                              'cluster_files')
 
 #H0 = 100.*0.7*1.e-6 #km*s^-1*pc^-1
 H0 = 100.*0.7 #km*s^-1*Mpc^-1
