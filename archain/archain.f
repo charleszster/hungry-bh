@@ -992,7 +992,6 @@ C       Calculate diffusion coefficients assuming velocity isotropy
         REAL*8 vx, vy, vz, DV(3), VBH, VBH2
         REAL*8 GALRH, GMASS, RHO, SIGMA, RS, RGAL
         REAL*8 CHI, CLAMBDA, GAMMAC, FCHI
-        REAL*8 SIMGA0
 
         SAVE
 
@@ -1012,8 +1011,7 @@ C       Calculate diffusion coefficients assuming velocity isotropy
      &             )**2+(XA(3*I))**2+4.0*RS*RS)
 
             RHO = GALRHO(RGAL)
-            SIGMA0 = GALSIG(RGAL)
-            SIGMA = SIGMA0
+            SIGMA = GALSIG(RGAL)
 
 C           Make correction to local velocity dispersion based on enclosed mass from BHs
 C            Menclosed = 0.0
@@ -1044,7 +1042,7 @@ C     &      /14.90763847, VBH/14.90763847
 
             CLAMBDA = LOG(RGAL*(VBH**2+SIGMA**2)/MA(I)) !Hoffman & Loeb (2007)
 C            CLAMBDA = LOG(RGAL/GALRH*MCL/MA(I)) !Mtot/MBH*RBH/Rh
-            IF (CLAMBDA.LT.1.0) CLAMBDA = 1.0
+            IF (CLAMBDA.LT.0.0) CLAMBDA = 0.0
 
 C           Check if velocity of BH is larger than local escape velocity (indicates binary)
             VESC = SQRT(-2.0*GALPOT(RGAL))  !turn potential energy into escape velocity
@@ -1105,11 +1103,11 @@ C           unit vector perpendicular to direction of motion
             VZ = VZ + FP*VZ/VBH + FBOT*vzp
 *
 C           Calculate energy change and test for too large kicks
-            DELTAV = VBH - SQRT(VX**2+VY**2+VZ**2)
+            DELTAV = VBH - SQRT(VX**2+VY**2+VZ**2+1000.)
             DELTAV = abs(DELTAV)/VBH
 *
             if (DELTAV.le.1.0) then
-               VBH = SQRT(VX**2+VY**2+VZ**2)
+               VBH = SQRT(VX**2+VY**2+VZ**2+1000.)
             else
                WRITE(*,*) 'HUGE KICK:',RGAL,RHO,
      &               SIGMA/14.90763847,VBH/14.90763847
@@ -1117,13 +1115,14 @@ C           Calculate energy change and test for too large kicks
                 IF (RGAL.GT.RCORE) THEN
                     STOP
                 ENDIF
+
                CALL GETGAUSS(GAUSS)
                VX = VBH/SQRT(3.0)*GAUSS
                CALL GETGAUSS(GAUSS)
                VY = VBH/SQRT(3.0)*GAUSS
                CALL GETGAUSS(GAUSS)
                VZ = VBH/SQRT(3.0)*GAUSS
-               VBH = SQRT(VX**2+VY**2+VZ**2)
+               VBH = SQRT(VX**2+VY**2+VZ**2+1000.)
             endif
 
             DELTAE = DELTAE-0.5*MA(I)*VBH*VBH
@@ -1141,11 +1140,11 @@ C           Calculate energy change and test for too large kicks
 
 C       Change scale radius of Plummer sphere based on energy change
         DELTAW = -2.0*DELTAW
-        IF (GTYPE.EQ.1) THEN
+        IF ((GTYPE.EQ.1).AND.(DELTAW.NE.0)) THEN
 C            write(*,*) "DELTAW = ",DELTAW
             pe = pe - DELTAW
             low_RCORE = RCORE/2.
-            high_RCORE = RCORE*2.
+            high_RCORE = RCORE+RCORE/2.
             CALL find_rc_newt(low_RCORE, high_RCORE, RCORE)
         ELSE
           RPL = 1.0/(1.0/RPL+3.3953054526*DELTAW/(MCL*MCL))
