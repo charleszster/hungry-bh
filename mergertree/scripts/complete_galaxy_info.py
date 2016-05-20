@@ -20,6 +20,7 @@ H0 = Constants.H0
 WM = Constants.WM
 WV = Constants.WV
 t0 = 1.56537653e+03 #Myr
+hubble_time = 13.72e9 #Yr
 
 def write_galaxies_final_masses(galaxies_masses):
     galaxies_masses_list = []
@@ -119,12 +120,13 @@ def get_t_fric(sigma_eff, MBH, eff_rad, r_drop):
     return (19./6.)*(sigma_eff/200.)*(1.e8/MBH)*(eff_rad/r_drop)**2.
 
 def read_orbiting_bhs(galaxy_num, smc):
-    with open(os.path.join(cluster_folder, 'Infalling_BH_masses_galaxy_%s' % (galaxy_num)), 'rb') as f:
+    with open(os.path.join(cluster_folder, 'Infalling_BH_masses_galaxy_%s.txt' % (galaxy_num)), 'rb') as f:
         whole = f.readlines()
     whole = [part.split() for part in whole[1:]]
     whole = np.array([[ast.literal_eval(entry) for entry in line] for line in whole])
     whole.view('i8,i8,i8').sort(order=['f2'], axis=0)
-    with open(os.path.join(cluster_folder, 'Infalling_BH_masses_galaxy_%s' % (galaxy_num)), 'wb') as f:
+    ts_at_ctr = []
+    with open(os.path.join(cluster_folder, 'Infalling_BH_masses_galaxy_%s.txt' % (galaxy_num)), 'wb') as f:
         f.write('BH ID\tInfall mass [Msun]\tInfall time [Myr]\tt at Ctr [Myr]\n')
         for line in whole:
             timo = t0+line[2]
@@ -137,6 +139,8 @@ def read_orbiting_bhs(galaxy_num, smc):
             t_at_center = timo + t_fric*1000.
             f.write('%s\t%11.0f\t\t\t%8.3f\t\t\t%11.0f\n' % (str(int(line[0])).zfill(4), line[1], line[2],
                                                              t_at_center))
+            ts_at_ctr.append(t_at_center)
+    return ts_at_ctr
 
 def run():
     smbh_cluster = get_clusters.get_pickled_file('smbh_cluster.pkl')
@@ -146,19 +150,31 @@ def run():
     galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
 #    write_galaxies_final_masses(galaxies_masses)
 
-    galaxy_num = '65'
-    t_s, masses_fitted, galaxy_mass_coeffs = get_galaxy_mass_data(galaxies_masses, galaxy_num)
+#    galaxy_num = '65'
+    for galaxy_num in ['1', '65', '149', '187', '217']:
+        t_s, masses_fitted, galaxy_mass_coeffs = get_galaxy_mass_data(galaxies_masses, galaxy_num)
 
-    central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs = \
-                                            get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster,
+        central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs = \
+                                                get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster,
                                                                                                              galaxy_num)
-    time, stellar_mass, stellar_mass_coefficients, stellar_mass_fitted = get_stellar_mass_growth(galaxies_by_id,
+        time, stellar_mass, stellar_mass_coefficients, stellar_mass_fitted = get_stellar_mass_growth(galaxies_by_id,
                                                                                                              galaxy_num)
-    output_coeffs_for_achain_h(galaxy_num, central_bh_mass_coeffs, galaxy_mass_coeffs, stellar_mass_coefficients)
+        output_coeffs_for_achain_h(galaxy_num, central_bh_mass_coeffs, galaxy_mass_coeffs, stellar_mass_coefficients)
 
-    plot_all_data(t_s, masses_fitted, galaxies_masses, galaxy_num, central_bh_mass, central_bh_mass_fitted, time,
-                                                                                     stellar_mass, stellar_mass_fitted)
-    read_orbiting_bhs(galaxy_num, stellar_mass_coefficients)
+#        plot_all_data(t_s, masses_fitted, galaxies_masses, galaxy_num, central_bh_mass, central_bh_mass_fitted, time,
+#                                                                                     stellar_mass, stellar_mass_fitted)
+        ts_at_ctr = read_orbiting_bhs(galaxy_num, stellar_mass_coefficients)
+        ts_at_ctr = np.array(ts_at_ctr)
+#        print ts_at_ctr
+        plt.figure()
+        plt.hist(np.log10(ts_at_ctr*1.e6))
+        plt.axvline(np.log10(hubble_time), color='g', linestyle='dashed', linewidth=2)
+        plt.axvline(np.log10(hubble_time*100.), color='r', linestyle='dashed', linewidth=2)        
+        plt.xlabel('Time at Center, Years (log)', fontsize=10)
+        plt.ylabel('# of black holes', fontsize=10)
+        plt.title(''.join(['Histogram of Orbiting Black Holes Time to Reach Center for Galaxy ',
+                           galaxy_num]), fontsize=10)
+        plt.savefig(os.path.join(plots_folder, ''.join(['t_at_center_histogram_gal_', galaxy_num, '.png'])))
 
 if __name__ == '__main__':
     run()

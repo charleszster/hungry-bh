@@ -43,7 +43,7 @@ def plot_stellar_mass(time, galaxy_num, stellar_mass, stellar_mass_fitted):
     plt.xlabel('Time (yr)')
     plt.ylabel('Stellar Mass (Msun)')
     plt.title('Stellar mass for Galaxy %s' %(galaxy_num))
-#    plt.show()
+    plt.show()
 #    plt.savefig(os.path.join(plots_folder, ''.join(['Stellar_Mass_Galaxy_%s' % (galaxy_num)])))
 #    plt.close()
 
@@ -54,7 +54,7 @@ def run():
     for galaxy_num in ['1', '51', '65']:
         #time orig. in Gyr; use Myr to not have to convert it in hermite code
         time = [time_slice[1]*1.e3 for time_slice in galaxies_by_id[galaxy_num]] 
-        stellar_mass = [time_slice[3] for time_slice in galaxies_by_id[galaxy_num]]
+        stellar_mass = analyze_clusters.get_galaxy_stellar_mass(galaxies_by_id, galaxy_num)
         popt = get_func_coeffs(time, stellar_mass)
         print 'Galaxy #%s:' % (galaxy_num)
         print popt

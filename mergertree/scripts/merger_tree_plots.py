@@ -11,6 +11,8 @@ import scipy.optimize
 import get_clusters
 import analyze_clusters
 import Constants
+import operator
+import math
 
 plots_folder = Constants.plots_folder
 cluster_folder = Constants.cluster_folder
@@ -53,7 +55,7 @@ def get_masses(orbiting_bhs, smbh_cluster, key):
             galaxy_bh_mass.append([time_slice[1], mass_this_redshift])
             if redshift == 0.0:
                 with open(os.path.join(cluster_folder, 
-                                       'Infalling_BH_masses_galaxy_%s' % (key)), 'wb') as f:
+                                       'Infalling_BH_masses_galaxy_%s.txt' % (key)), 'wb') as f:
 #                    print key, redshift, bhs
                     f.write('BH ID\tInfall mass [Msun]\tInfall time [Myr]\n')
                     bh_masses = []
@@ -158,20 +160,52 @@ def run():
 
 #    smbh_cluster = get_clusters.process_smbh_cluster(H0, WM, WV)
     smbh_cluster = get_clusters.get_pickled_file('smbh_cluster.pkl')
+    smbh_by_id = analyze_clusters.get_smbh_by_id(smbh_cluster)
+    galaxy_num = '187'
+    smbh_mass = np.array(analyze_clusters.get_cbh_accreted_plus_seed_mass(smbh_by_id, galaxy_num))
+#    print smbh_by_id[galaxy_num]
+#    print '\n\n'
+#    print smbh_mass
 
 #    galaxies_cluster = get_clusters.process_galaxies_cluster(H0, WM, WV)
     galaxies_cluster_no_bad_z = get_clusters.get_pickled_file('galaxies_cluster_no_bad_z.pkl')
+    galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
+    galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
+    galaxy_mass_v_time = zip(galaxies_masses[galaxy_num][1], galaxies_masses[galaxy_num][2])
+    galaxy_mass_v_time = np.array(map(list, galaxy_mass_v_time))
+    stellar_mass = analyze_clusters.get_galaxy_stellar_mass(galaxies_by_id, galaxy_num)
+    stellar_mass_v_time = zip(galaxies_masses[galaxy_num][1], stellar_mass)
+    stellar_mass_v_time = np.array(map(list, stellar_mass_v_time))
+    print galaxies_by_id[galaxy_num]
+    print galaxy_mass_v_time, '\n'
+    print stellar_mass_v_time, '\n'
+    print smbh_mass
+
+    f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)    
+    ax1.semilogy(galaxy_mass_v_time[:,0], galaxy_mass_v_time[:,1])
+    ax1.set_ylabel('Mass (Msun)', fontsize=10)
+    ax1.set_title('Galaxy Stellar+Dark Matter Mass for Galaxy %s' % (galaxy_num), fontsize=10)
+    ax2.semilogy(stellar_mass_v_time[:,0], stellar_mass_v_time[:,1])
+    ax2.set_ylabel('Mass (Msun)', fontsize=10)
+    ax2.set_title('Stellar Mass for Galaxy %s' % (galaxy_num), fontsize=10)
+    ax3.semilogy(smbh_mass[:,0], smbh_mass[:,1])
+    ax3.set_xticks(np.arange(0., math.ceil(max(galaxy_mass_v_time[:,0]))+1., 1.0))
+    ax3.set_xlabel('Time (Gyr)', fontsize=10)
+    ax3.set_ylabel('Mass (Msun)', fontsize=10)
+    ax3.set_title('Central BH Seed + Accreted Mass for Galaxy %s' % (galaxy_num), fontsize=10)
+    f.tight_layout()
+    plt.savefig(os.path.join(plots_folder, 'Masses_plot_galaxy_%s.png' % (galaxy_num)))
+    plt.show()
+
+
+#    print galaxies_by_id[galaxy_num]
 
 #    galaxy_1 = [line for line in galaxies_cluster if line[2]==1]
 #    black_holes = [time_slice[-1] for time_slice in galaxy_1 if time_slice[0]<=0.0][0]
 #    print black_holes
 
-    galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
-    galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
-#    print galaxies_masses['1']
-    print galaxies_by_id['1']
 
-    analyze_clusters.plot_galaxies_all_masses(galaxies_masses)
+#    analyze_clusters.plot_galaxies_all_masses(galaxies_masses)
     '''
     top_masses = 3
     galaxies_max_mass = analyze_clusters.get_most_massive_galaxies(galaxies_masses, final_masses, top_masses)
