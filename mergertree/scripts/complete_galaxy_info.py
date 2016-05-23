@@ -53,7 +53,7 @@ def get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster, galaxy_n
                                                                                                    central_bh_mass)
 #    print 'Central Black Hole Mass Coefficients 10**((a*np.exp(b/t))), t in Gyr:'
 #    print central_bh_mass_coeffs, '\n\n'
-    return central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs
+    return central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs, bh_masses
 
 def get_stellar_mass_growth(galaxies_by_id, galaxy_num):
     time = [time_slice[1]*1.e3 for time_slice in galaxies_by_id[galaxy_num]] 
@@ -151,10 +151,11 @@ def run():
 #    write_galaxies_final_masses(galaxies_masses)
 
 #    galaxy_num = '65'
-    for galaxy_num in ['1', '65', '149', '187', '217']:
+    galaxy_names = {'1': 'A', '65': 'B', '149': 'C', '187': 'D', '217': 'E'}
+    for galaxy_num, name in galaxy_names.iteritems():
         t_s, masses_fitted, galaxy_mass_coeffs = get_galaxy_mass_data(galaxies_masses, galaxy_num)
 
-        central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs = \
+        central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs, bh_masses = \
                                                 get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster,
                                                                                                              galaxy_num)
         time, stellar_mass, stellar_mass_coefficients, stellar_mass_fitted = get_stellar_mass_growth(galaxies_by_id,
@@ -169,12 +170,22 @@ def run():
         plt.figure()
         plt.hist(np.log10(ts_at_ctr*1.e6))
         plt.axvline(np.log10(hubble_time), color='g', linestyle='dashed', linewidth=2)
-        plt.axvline(np.log10(hubble_time*100.), color='r', linestyle='dashed', linewidth=2)        
         plt.xlabel('Time at Center, Years (log)', fontsize=10)
         plt.ylabel('# of black holes', fontsize=10)
         plt.title(''.join(['Histogram of Orbiting Black Holes Time to Reach Center for Galaxy ',
-                           galaxy_num]), fontsize=10)
+                           name]), fontsize=10)
         plt.savefig(os.path.join(plots_folder, ''.join(['t_at_center_histogram_gal_', galaxy_num, '.png'])))
+        plt.close()
+        
+        plt.figure()
+        bh_masses = np.array(bh_masses)
+        plt.hist(np.log10(bh_masses))
+        plt.xlabel('BH Mass (M$_\odot$), log', fontsize=10)
+        plt.ylabel('# of black holes', fontsize=10)
+        plt.title(''.join(['Histogram of Masses of Orbiting Black Holes for Galaxy ',
+                           name]), fontsize=10)
+        plt.savefig(os.path.join(plots_folder, ''.join(['orbiting_bh_mass_histogram_gal_', galaxy_num, '.png'])))
+        plt.close()
 
 if __name__ == '__main__':
     run()

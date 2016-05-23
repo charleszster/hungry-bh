@@ -161,42 +161,39 @@ def run():
 #    smbh_cluster = get_clusters.process_smbh_cluster(H0, WM, WV)
     smbh_cluster = get_clusters.get_pickled_file('smbh_cluster.pkl')
     smbh_by_id = analyze_clusters.get_smbh_by_id(smbh_cluster)
-    galaxy_num = '187'
-    smbh_mass = np.array(analyze_clusters.get_cbh_accreted_plus_seed_mass(smbh_by_id, galaxy_num))
-#    print smbh_by_id[galaxy_num]
-#    print '\n\n'
-#    print smbh_mass
 
 #    galaxies_cluster = get_clusters.process_galaxies_cluster(H0, WM, WV)
     galaxies_cluster_no_bad_z = get_clusters.get_pickled_file('galaxies_cluster_no_bad_z.pkl')
     galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
     galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
-    galaxy_mass_v_time = zip(galaxies_masses[galaxy_num][1], galaxies_masses[galaxy_num][2])
-    galaxy_mass_v_time = np.array(map(list, galaxy_mass_v_time))
-    stellar_mass = analyze_clusters.get_galaxy_stellar_mass(galaxies_by_id, galaxy_num)
-    stellar_mass_v_time = zip(galaxies_masses[galaxy_num][1], stellar_mass)
-    stellar_mass_v_time = np.array(map(list, stellar_mass_v_time))
-    print galaxies_by_id[galaxy_num]
-    print galaxy_mass_v_time, '\n'
-    print stellar_mass_v_time, '\n'
-    print smbh_mass
 
-    f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)    
-    ax1.semilogy(galaxy_mass_v_time[:,0], galaxy_mass_v_time[:,1])
-    ax1.set_ylabel('Mass (Msun)', fontsize=10)
-    ax1.set_title('Galaxy Stellar+Dark Matter Mass for Galaxy %s' % (galaxy_num), fontsize=10)
-    ax2.semilogy(stellar_mass_v_time[:,0], stellar_mass_v_time[:,1])
-    ax2.set_ylabel('Mass (Msun)', fontsize=10)
-    ax2.set_title('Stellar Mass for Galaxy %s' % (galaxy_num), fontsize=10)
-    ax3.semilogy(smbh_mass[:,0], smbh_mass[:,1])
-    ax3.set_xticks(np.arange(0., math.ceil(max(galaxy_mass_v_time[:,0]))+1., 1.0))
-    ax3.set_xlabel('Time (Gyr)', fontsize=10)
-    ax3.set_ylabel('Mass (Msun)', fontsize=10)
-    ax3.set_title('Central BH Seed + Accreted Mass for Galaxy %s' % (galaxy_num), fontsize=10)
-    f.tight_layout()
-    plt.savefig(os.path.join(plots_folder, 'Masses_plot_galaxy_%s.png' % (galaxy_num)))
-    plt.show()
 
+    for galaxy_num in ['1', '65', '149', '187', '217']:
+#    galaxy_num = '187'
+        smbh_mass = np.array(analyze_clusters.get_cbh_accreted_plus_seed_mass(smbh_by_id, galaxy_num))
+
+        galaxy_mass_v_time = zip(galaxies_masses[galaxy_num][1], galaxies_masses[galaxy_num][2])
+        galaxy_mass_v_time = np.array(map(list, galaxy_mass_v_time))
+        stellar_mass = analyze_clusters.get_galaxy_stellar_mass(galaxies_by_id, galaxy_num)
+        stellar_mass_v_time = zip(galaxies_masses[galaxy_num][1], stellar_mass)
+        stellar_mass_v_time = np.array(map(list, stellar_mass_v_time))
+#        print galaxies_by_id[galaxy_num]
+#        print galaxy_mass_v_time, '\n'
+#        print stellar_mass_v_time, '\n'
+#        print smbh_mass
+
+        plt.figure()
+        plt.semilogy(galaxy_mass_v_time[:,0], galaxy_mass_v_time[:,1], label='Galaxy Mass')
+        plt.ylabel('Mass (M$_\odot$)', fontsize=10)
+        plt.semilogy(stellar_mass_v_time[:,0], stellar_mass_v_time[:,1], label='Stellar Mass')
+        plt.semilogy(smbh_mass[:,0], smbh_mass[:,1], label='Central BH Mass')
+        plt.xticks(np.arange(0., math.ceil(max(galaxy_mass_v_time[:,0]))+1., 1.0))
+        plt.xlabel('Time (Gyr)', fontsize=10)
+        plt.tight_layout()
+        plt.legend(loc='best', fontsize=10)
+        plt.savefig(os.path.join(plots_folder, 'Masses_plot_galaxy_%s.png' % (galaxy_num)))
+#        plt.show()
+        plt.close()
 
 #    print galaxies_by_id[galaxy_num]
 
