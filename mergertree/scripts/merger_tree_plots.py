@@ -4,12 +4,14 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import pickle
 import os
 import pprint
 import scipy.optimize
 import get_clusters
 import analyze_clusters
+import galaxies_star_mass
 import Constants
 import operator
 import math
@@ -154,6 +156,9 @@ def fit_and_plot_central_bh_masses(smbh_cluster, galaxies_cluster_no_bad_z):
         plt.show()
 
 def run():
+    mpl.rcParams.update({'font.size': 15})
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='Computer Modern Sans serif')
     H0 = Constants.H0
     WM = Constants.WM
     WV = Constants.WV
@@ -171,9 +176,16 @@ def run():
     for galaxy_num in ['1', '65', '149', '187', '217']:
 #    galaxy_num = '187'
         smbh_mass = np.array(analyze_clusters.get_cbh_accreted_plus_seed_mass(smbh_by_id, galaxy_num))
-
+        popt, smbh_mass_fitted = curve_fit_central_bh_masses(galaxy_num, smbh_mass)
+        smbh_mass_fitted = np.array(smbh_mass_fitted)
+        
         galaxy_mass_v_time = zip(galaxies_masses[galaxy_num][1], galaxies_masses[galaxy_num][2])
         galaxy_mass_v_time = np.array(map(list, galaxy_mass_v_time))
+        popt_galaxy_mass = analyze_clusters.curve_fit_any_galaxy_mass(galaxies_masses, galaxy_num)
+        ydata_est = [analyze_clusters.poly_func(x, *tuple(popt_galaxy_mass)) for x in galaxies_masses[galaxy_num][1]]
+        galaxies_mass_fitted = [galaxies_masses[galaxy_num][1], [10**y for y in ydata_est]]
+        galaxies_mass_fitted = np.array(galaxies_mass_fitted)
+
         stellar_mass = analyze_clusters.get_galaxy_stellar_mass(galaxies_by_id, galaxy_num)
         stellar_mass_v_time = zip(galaxies_masses[galaxy_num][1], stellar_mass)
         stellar_mass_v_time = np.array(map(list, stellar_mass_v_time))
@@ -183,14 +195,30 @@ def run():
 #        print smbh_mass
 
         plt.figure()
-        plt.semilogy(galaxy_mass_v_time[:,0], galaxy_mass_v_time[:,1], label='Galaxy Mass')
-        plt.ylabel('Mass (M$_\odot$)', fontsize=10)
-        plt.semilogy(stellar_mass_v_time[:,0], stellar_mass_v_time[:,1], label='Stellar Mass')
-        plt.semilogy(smbh_mass[:,0], smbh_mass[:,1], label='Central BH Mass')
+        plt.semilogy(galaxy_mass_v_time[:,0], galaxy_mass_v_time[:,1], 'b', lw=3.5, alpha=0.5, label='Galaxy Mass')
+        plt.semilogy(galaxies_mass_fitted[0,:], galaxies_mass_fitted[1,:], 'b--', lw=3.5, alpha=0.5)
+#        plt.ylabel('Mass [M$_\odot$]')
+        plt.ylabel(r'$M_{BH} [M_\odot]$')
+
+        plt.semilogy(stellar_mass_v_time[:,0], stellar_mass_v_time[:,1], 'g', lw=2., alpha=0.5, label='Stellar Mass')
+        popt_star_mass = galaxies_star_mass.get_func_coeffs(stellar_mass_v_time[:,0]*1.e3, stellar_mass_v_time[:,1])
+        stellar_mass_fitted = zip(stellar_mass_v_time[:,0]*1.e3, 
+                                  [10.**(galaxies_star_mass.poly_func(t, *tuple(popt_star_mass))) for t in 
+                                                                                         stellar_mass_v_time[:,0]*1.e3])
+        stellar_mass_fitted = np.array(stellar_mass_fitted)
+        plt.semilogy(stellar_mass_fitted[:,0]/1.e3, stellar_mass_fitted[:,1], 'g--', lw=2., alpha=0.5)
+
+        print(galaxy_num, smbh_mass[:,1])
+        plt.semilogy(smbh_mass[:,0], smbh_mass[:,1], 'r', lw=0.5, alpha=1., label='Central BH Mass')
+        plt.semilogy(smbh_mass_fitted[0,:], smbh_mass_fitted[1,:], 'r--', lw=1., alpha=0.5)
+
         plt.xticks(np.arange(0., math.ceil(max(galaxy_mass_v_time[:,0]))+1., 1.0))
-        plt.xlabel('Time (Gyr)', fontsize=10)
+        plt.xlabel('Time [Gyr]')
+        plt.xticks(np.arange(0, 16, 2))
+#        plt.xlim([0, 14])
+        plt.ylim([10.**4, 10.**15])
         plt.tight_layout()
-        plt.legend(loc='best', fontsize=10)
+        plt.legend(loc='lower right')
         plt.savefig(os.path.join(plots_folder, 'Masses_plot_galaxy_%s.png' % (galaxy_num)))
 #        plt.show()
         plt.close()
@@ -235,8 +263,8 @@ def run():
     galaxies_max_mass_fitted['65'] = [time, garbage, mass]
 
     analyze_clusters.plot_max_masses_galaxies_orig_and_fitted(galaxies_max_mass, galaxies_max_mass_fitted, top_masses)
-
-#    fit_and_plot_central_bh_masses(smbh_cluster, galaxies_cluster_no_bad_z)
     '''
+    fit_and_plot_central_bh_masses(smbh_cluster, galaxies_cluster_no_bad_z)
+
 if __name__ == '__main__':
     run()

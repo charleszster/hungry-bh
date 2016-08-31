@@ -12,6 +12,7 @@ import analyze_clusters
 import merger_tree_plots
 import galaxies_star_mass
 import Constants
+import matplotlib as mpl
 
 plots_folder = Constants.plots_folder
 cluster_folder = Constants.cluster_folder
@@ -143,15 +144,25 @@ def read_orbiting_bhs(galaxy_num, smc):
     return ts_at_ctr
 
 def run():
+    mpl.rcParams.update({'font.size': 15})
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='Computer Modern Sans serif')
     smbh_cluster = get_clusters.get_pickled_file('smbh_cluster.pkl')
     galaxies_cluster_no_bad_z = get_clusters.get_pickled_file('galaxies_cluster_no_bad_z.pkl')
 
     galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
+#    print(galaxies_by_id['217'])
     galaxies_masses, final_masses = analyze_clusters.get_galaxies_masses(galaxies_by_id)
 #    write_galaxies_final_masses(galaxies_masses)
 
 #    galaxy_num = '65'
-    galaxy_names = {'1': 'A', '65': 'B', '149': 'C', '187': 'D', '217': 'E'}
+    merged_bhs_from_simulations = {'1': [[7.63838E+06,2.35248E+06,1.23739E+09,2.14763E+08],
+                                         [3146.E+06, 12560.E+06, 2974.E+06, 71209.E+06]],
+                                   '65': [[8.08983E+08,7.20130E+07,2.96940E+08,7.06418E+07],
+                                          [10000.E+06, 61228.E+06, 19018.E+06, 63883.E+06]],
+                                   '187': [[1.21178E+07, 2.02427E+07], [72505.E+06, 50722.E+06]],
+                                   '217': [[1.34011E+07, 1.11187E+06], [3248.E+06, 20166.E+06]]}
+    galaxy_names = {'1': 'A', '65': 'B', '187': 'D', '217': 'E'}
     for galaxy_num, name in galaxy_names.iteritems():
         t_s, masses_fitted, galaxy_mass_coeffs = get_galaxy_mass_data(galaxies_masses, galaxy_num)
 
@@ -168,22 +179,35 @@ def run():
         ts_at_ctr = np.array(ts_at_ctr)
 #        print ts_at_ctr
         plt.figure()
-        plt.hist(np.log10(ts_at_ctr*1.e6))
-        plt.axvline(np.log10(hubble_time), color='g', linestyle='dashed', linewidth=2)
-        plt.xlabel('Time at Center, Years (log)', fontsize=10)
-        plt.ylabel('# of black holes', fontsize=10)
-        plt.title(''.join(['Histogram of Orbiting Black Holes Time to Reach Center for Galaxy ',
-                           name]), fontsize=10)
+        plt.hist(np.log10(ts_at_ctr*1.e6), bins=np.arange(9., 18.+.25, .25), alpha=0.5, color='blue',
+                                                                                                   label='Orbiting BHs')
+        plt.hist(np.log10(merged_bhs_from_simulations[galaxy_num][1]), bins=np.arange(9., 18.+.25, .25), alpha=0.5,
+                                                                                       color='red', label='Merged BHs')
+        plt.axvline(np.log10(hubble_time), color='g', linestyle='dashed', linewidth=2, label='Hubble Time')
+        plt.xlabel(r'$\log_{10}\left(t_{fric}\right) [Yrs]$')
+        plt.ylim([0,23])
+        plt.yticks(np.arange(0, 23, 2))
+        plt.ylabel('Count of black holes')
+#        plt.title(''.join(['Histogram of Orbiting Black Holes Time to Reach Center for Galaxy ',
+#                           name]))
+        plt.legend(loc='upper left')
         plt.savefig(os.path.join(plots_folder, ''.join(['t_at_center_histogram_gal_', galaxy_num, '.png'])))
         plt.close()
         
         plt.figure()
         bh_masses = np.array(bh_masses)
-        plt.hist(np.log10(bh_masses))
-        plt.xlabel('BH Mass (M$_\odot$), log', fontsize=10)
-        plt.ylabel('# of black holes', fontsize=10)
-        plt.title(''.join(['Histogram of Masses of Orbiting Black Holes for Galaxy ',
-                           name]), fontsize=10)
+        print(galaxy_num, np.log10(bh_masses))
+        plt.hist(np.log10(bh_masses), bins=np.arange(2., 10.+.25, .25), alpha=0.5, color='blue', label='Orbiting BHs')
+        plt.hist(np.log10(merged_bhs_from_simulations[galaxy_num][0]), bins=np.arange(2., 10.+.25, .25), alpha=0.5,
+                                                                                       color='red', label='Merged BHs')
+#        plt.xlabel('BH Mass (M$_\odot$), log')
+        plt.xlabel(r'$\log_{10}\left(M_{BH}\right) [M_\odot]$')
+        plt.ylim([0,22])
+        plt.yticks(np.arange(0, 23, 2))
+        plt.ylabel('Count of black holes')
+        plt.legend(loc='upper right')
+#        plt.title(''.join(['Histogram of Masses of Orbiting Black Holes for Galaxy ',
+#                           name]))
         plt.savefig(os.path.join(plots_folder, ''.join(['orbiting_bh_mass_histogram_gal_', galaxy_num, '.png'])))
         plt.close()
 
