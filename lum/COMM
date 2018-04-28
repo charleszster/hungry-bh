@@ -1,0 +1,26 @@
+      parameter  (nx=98)
+      parameter  (ndx=49)
+      common/dat/ h,omega,omegab,rho0B,zoutput,zinit,box,rsmooth,rhobar
+     .           ,rhohbar,rhohebar,rhohe2bar,tembar,pbar,rhodbar
+     .           ,fh,fhe,xi0
+c     common/dkm/ xyz(ndx,ndx,ndx,3),wdk(nx,nx,nx),
+c    .            vxyz(ndx,ndx,ndx,3)
+      common/brn/ rho(nx,nx,nx)
+c    .           ,px(nx,nx,nx),py(nx,nx,nx)
+c    .           ,pz(nx,nx,nx)
+     .           ,p(nx,nx,nx)
+     .           ,rhoavg(nx,nx),temavg(nx,nx),
+     .            rhohavg(nx,nx),
+     .            rhosm(nx,nx,nx),
+     .            tcool(nx,nx,nx),
+     .            index(nx,nx,nx)
+      common/rad/ zrad(10),tot(2000)
+      common/unt/ urho,utim,utmp,uvel,uszy,urad,fmton
+      common/dim/ ncell,ncell1,ncell2, ndk,ndk1
+      common/vac/ plim,rlim,rlim1,rlim2,rlim3,rlim4,ratio0
+c
+      real*4 lff1(nx,nx,nx),lff2(nx,nx,nx),lff3(nx,nx,nx)
+      real*4 lff4(nx,nx,nx),lff (nx,nx,nx),massb(nx,nx,nx)
+      real*4 lffb(nx,nx,nx)
+      real*4 tempc(nx,nx,nx)
+      common/xry/ lff1,lff2,lff3,lff4,lff,massb,tempc

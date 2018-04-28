@@ -51,9 +51,10 @@ def run():
     galaxies_cluster_no_bad_z = get_clusters.get_pickled_file('galaxies_cluster_no_bad_z.pkl')
     galaxies_by_id = analyze_clusters.get_galaxies_by_id(galaxies_cluster_no_bad_z)
     smbh_cluster = get_clusters.get_pickled_file('smbh_cluster.pkl')
-    for galaxy_num in ['1', '51', '65']:
+    for galaxy_num in ['1']:
         #time orig. in Gyr; use Myr to not have to convert it in hermite code
-        time = [time_slice[1]*1.e3 for time_slice in galaxies_by_id[galaxy_num]] 
+        time = [time_slice[1]*1.e3 for time_slice in galaxies_by_id[galaxy_num]]
+        print(time)
         stellar_mass = analyze_clusters.get_galaxy_stellar_mass(galaxies_by_id, galaxy_num)
         popt = get_func_coeffs(time, stellar_mass)
         print 'Galaxy #%s:' % (galaxy_num)

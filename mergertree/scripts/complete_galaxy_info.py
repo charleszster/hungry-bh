@@ -21,7 +21,7 @@ H0 = Constants.H0
 WM = Constants.WM
 WV = Constants.WV
 t0 = 1.56537653e+03 #Myr
-hubble_time = 13.72e9 #Yr
+hubble_time = 13720e6 #MYr
 
 def write_galaxies_final_masses(galaxies_masses):
     galaxies_masses_list = []
@@ -57,7 +57,7 @@ def get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster, galaxy_n
     return central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs, bh_masses
 
 def get_stellar_mass_growth(galaxies_by_id, galaxy_num):
-    time = [time_slice[1]*1.e3 for time_slice in galaxies_by_id[galaxy_num]] 
+    time = [time_slice[1]*1.e3 for time_slice in galaxies_by_id[galaxy_num]]
     stellar_mass = [time_slice[3] for time_slice in galaxies_by_id[galaxy_num]]
     stellar_mass_coefficients = galaxies_star_mass.get_func_coeffs(time, stellar_mass)
 #    print 'Stellar Mass Growth Coefficients 10**(a*t**7. + b*t**6. + c*t**5. + d*t**4. + e*t**3. + f*t**2. + g*t + h), t in Myr:'
@@ -66,7 +66,7 @@ def get_stellar_mass_growth(galaxies_by_id, galaxy_num):
     return time, stellar_mass, stellar_mass_coefficients, stellar_mass_fitted
 
 def output_coeffs_for_achain_h(galaxy_num, central_bh_mass_coeffs, galaxy_mass_coeffs, stellar_mass_coefficients):
-    print 'C*********Parameters used for calculating the central black hole mass (mbch*), galaxy scale mass (mg*) and', 
+    print 'C*********Parameters used for calculating the central black hole mass (mbch*), galaxy scale mass (mg*) and',
     print 'stellar mass (sm*) for GALAXY %s' % (galaxy_num)
     print 'C      PARAMETER(mbch1=%.8f, mbch2=%.8f) !central bh mass parameters for Galaxy %s' % \
                                                       (central_bh_mass_coeffs[0], central_bh_mass_coeffs[1], galaxy_num)
@@ -108,7 +108,7 @@ def get_z(timo):
     return 7.20196192*(timo/1000)**(-0.59331986) - 1.52145449
 
 def get_stlr_mass(timo, smc):
-    return 10.**(smc[0]*timo**7. + smc[1]*timo**6. + smc[2]*timo**5. + smc[3]*timo**4. + smc[4]*timo**3. + 
+    return 10.**(smc[0]*timo**7. + smc[1]*timo**6. + smc[2]*timo**5. + smc[3]*timo**4. + smc[4]*timo**3. +
                                                                                  smc[5]*timo**2. + smc[6]*timo + smc[7])
 
 def get_eff_rad(stlr_mass, z):
@@ -162,17 +162,34 @@ def run():
                                           [10000.E+06, 61228.E+06, 19018.E+06, 63883.E+06]],
                                    '187': [[1.21178E+07, 2.02427E+07], [72505.E+06, 50722.E+06]],
                                    '217': [[1.34011E+07, 1.11187E+06], [3248.E+06, 20166.E+06]]}
-    galaxy_names = {'1': 'A', '65': 'B', '187': 'D', '217': 'E'}
+    galaxy_names = {'138': 'Ignore Name', '201': 'Ignore Name', '153': 'Ignore Name', '215': 'Ignore Name', '213': 'Ignore Name', '210':\
+    'Ignore Name', '217': 'Ignore Name', '195': 'Ignore Name', '158': 'Ignore Name', '197': 'Ignore Name', '242': 'Ignore Name', '191':\
+    'Ignore Name', '193': 'Ignore Name', '132': 'Ignore Name', '238': 'Ignore Name', '239': 'Ignore Name', '179': 'Ignore Name', '178':\
+    'Ignore Name', '234': 'Ignore Name', '176': 'Ignore Name', '236': 'Ignore Name', '174': 'Ignore Name', '230': 'Ignore Name', '166':\
+    'Ignore Name', '232': 'Ignore Name', '170': 'Ignore Name', '92': 'Ignore Name', '223': 'Ignore Name', '211': 'Ignore Name', '222':\
+    'Ignore Name', '1': 'Ignore Name', '180': 'Ignore Name', '181': 'Ignore Name', '186': 'Ignore Name', '187': 'Ignore Name', '184':\
+    'Ignore Name', '231': 'Ignore Name', '188': 'Ignore Name', '220': 'Ignore Name', '235': 'Ignore Name', '144': 'Ignore Name', '205':\
+    'Ignore Name', '207': 'Ignore Name', '209': 'Ignore Name', '208': 'Ignore Name', '149': 'Ignore Name', '244': 'Ignore Name', '168':\
+    'Ignore Name', '240': 'Ignore Name', '243': 'Ignore Name', '228': 'Ignore Name', '227': 'Ignore Name', '226': 'Ignore Name', '225':\
+    'Ignore Name', '224': 'Ignore Name', '160': 'Ignore Name', '161': 'Ignore Name', '221': 'Ignore Name', '163': 'Ignore Name', '80':\
+    'Ignore Name', '114': 'Ignore Name', '126': 'Ignore Name', '51': 'Ignore Name', '233': 'Ignore Name', '241': 'Ignore Name', '237':\
+    'Ignore Name', '65': 'Ignore Name'}
+    stellar_data = {}
     for galaxy_num, name in galaxy_names.iteritems():
+        '''
         t_s, masses_fitted, galaxy_mass_coeffs = get_galaxy_mass_data(galaxies_masses, galaxy_num)
-
+#        print(name, ':', str(galaxies_masses[galaxy_num][2][0]), str(galaxies_masses[galaxy_num][2][-1]))
         central_bh_mass, central_bh_mass_fitted, central_bh_mass_coeffs, bh_masses = \
                                                 get_central_bh_mass_growth(galaxies_cluster_no_bad_z, smbh_cluster,
                                                                                                              galaxy_num)
+        print(''.join([name, ' bh mass: ']), central_bh_mass[0], central_bh_mass[-1])
+        '''
         time, stellar_mass, stellar_mass_coefficients, stellar_mass_fitted = get_stellar_mass_growth(galaxies_by_id,
                                                                                                              galaxy_num)
-        output_coeffs_for_achain_h(galaxy_num, central_bh_mass_coeffs, galaxy_mass_coeffs, stellar_mass_coefficients)
+        stellar_data[galaxy_num] = stellar_mass_coefficients
 
+        '''
+        output_coeffs_for_achain_h(galaxy_num, central_bh_mass_coeffs, galaxy_mass_coeffs, stellar_mass_coefficients)
 #        plot_all_data(t_s, masses_fitted, galaxies_masses, galaxy_num, central_bh_mass, central_bh_mass_fitted, time,
 #                                                                                     stellar_mass, stellar_mass_fitted)
         ts_at_ctr = read_orbiting_bhs(galaxy_num, stellar_mass_coefficients)
@@ -193,10 +210,10 @@ def run():
         plt.legend(loc='upper left')
         plt.savefig(os.path.join(plots_folder, ''.join(['t_at_center_histogram_gal_', galaxy_num, '.png'])))
         plt.close()
-        
+
         plt.figure()
         bh_masses = np.array(bh_masses)
-        print(galaxy_num, np.log10(bh_masses))
+#        print(galaxy_num, np.log10(bh_masses))
         plt.hist(np.log10(bh_masses), bins=np.arange(2., 10.+.25, .25), alpha=0.5, color='blue', label='Orbiting BHs')
         plt.hist(np.log10(merged_bhs_from_simulations[galaxy_num][0]), bins=np.arange(2., 10.+.25, .25), alpha=0.5,
                                                                                        color='red', label='Merged BHs')
@@ -210,6 +227,8 @@ def run():
 #                           name]))
         plt.savefig(os.path.join(plots_folder, ''.join(['orbiting_bh_mass_histogram_gal_', galaxy_num, '.png'])))
         plt.close()
+        '''
+    print(stellar_data)
 
 if __name__ == '__main__':
     run()
